@@ -817,7 +817,7 @@ void atualizaReg(char* filename, int RRN, tRegistro reg){
 	//Move para o registro
 	fseek(arquivo, (RRN * TamReg) + TamCab, SEEK_SET);
 
-	//Verifica a existência do registro
+	//Verifica a existï¿½ncia do registro
 	if (fread(&aux, sizeof(int), 1, arquivo) != 1 || aux == -1){
 		printf("Resgistro inexistente.\n");
 
@@ -885,12 +885,12 @@ void desfragmentarArq(char* filename){
 		return;
 	}
 
-	//Campos usados para transferência
+	//Campos usados para transferï¿½ncia
 	reg.nomeEscola = (char*) malloc(sizeof(char) * (TamReg - 36));
 	reg.municipio = (char*) malloc(sizeof(char) * (TamReg - 36));
 	reg.endereco = (char*) malloc(sizeof(char) * (TamReg - 36));
 
-	//Transfere cabeçalho
+	//Transfere cabeï¿½alho
 	fwrite(&status, sizeof(char), 1, new);
 	fwrite(&topoPilha, sizeof(int), 1, new);
 
@@ -919,7 +919,7 @@ void desfragmentarArq(char* filename){
     		fwrite(&reg.codEscola, sizeof(int), 1, new);
 			fwrite(reg.dataInicio, sizeof(char), 10, new);
 			fwrite(reg.dataFinal, sizeof(char), 10, new);
-			//Campos de tamanho variável
+			//Campos de tamanho variï¿½vel
 			fwrite(&st_tam, sizeof(int), 1, new);
 			fwrite(reg.nomeEscola, sizeof(char), st_tam, new);
 			fwrite(&nd_tam, sizeof(int), 1, new);
@@ -932,12 +932,12 @@ void desfragmentarArq(char* filename){
 		}
 
 		else {
-			//Move ao próximo registro
+			//Move ao prï¿½ximo registro
 			fseek(old, TamReg - sizeof(int), SEEK_CUR);
 		}
 	}
 
-	//Libera blocos de memória usados
+	//Libera blocos de memï¿½ria usados
 	free(reg.nomeEscola);
 	free(reg.municipio);
 	free(reg.endereco);
@@ -978,8 +978,7 @@ void showStack(char* fileName){
 
     }
     else{
-        while((c=fgetc(arquivo)) != EOF && topoPilha != -1){ // pega todas as posicoes da pilha
-            ungetc(c,arquivo);
+        while(topoPilha != -1){ // pega todas as posicoes da pilha
             printf("%d \n",topoPilha);
             fseek(arquivo, TamCab+4+(topoPilha*TamReg) ,SEEK_SET);
             fread(&topoPilha,sizeof(topoPilha),1,arquivo);
