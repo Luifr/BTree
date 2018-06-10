@@ -2,22 +2,25 @@
 #define BTREE_H
 #include "arqInfo.h"
 
+#define btree_size 10
 #define TamCabB 9
-#define TamReg 116 //conferir
+#define TamRegB 116 //conferir
 
 typedef struct{
     int C;
     int PRRN;
 }tKey;
 
-typedef struct Node{
+typedef struct{
     int n;
-    struct Node[10];
-    tKey[9] K;
+    int P[btree_size];
+    tKey K[btree_size-1];
 }node;
 
 
-typedef node* BTree;
+typedef struct btree{
+    node* head;
+}BTree;
 
 void insertBTree();
 

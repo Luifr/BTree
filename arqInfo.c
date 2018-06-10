@@ -29,7 +29,7 @@ void leituraArq(char* filename_R, char* filename_W){
     }
 
     //Cria o cabecalho
-    status = '0';
+    status = 0;
     topoPilha = -1;
     fwrite(&status, sizeof(status), 1, arquivoS);
     fwrite(&topoPilha, sizeof(topoPilha), 1, arquivoS);
@@ -136,7 +136,7 @@ void recuperaArq(char* filename){
     FILE *arquivo;
     int st_tam, nd_tam, rd_tam; //Indicadores de Tamanho
     int RRN = 0;
-    char valid = '0';//Usado para saber se existiam registros
+    char valid = 0;//Usado para saber se existiam registros
     //Abertura do arquivo para leitura
     arquivo = fopen(filename, "rb+");
 
@@ -202,7 +202,7 @@ void recuperaArq(char* filename){
     free(reg.municipio);
     free(reg.endereco);
 
-    if (valid == '0'){
+    if (valid == 0){
         printf("Registro inexistente.\n");
     }
 
@@ -656,7 +656,7 @@ void removeReg(char* filename, int RRN){
     }
 
     //Atualiza o cabecalho
-    status = '0';
+    status = 0;
     fwrite(&status, sizeof(status), 1, arquivo);
     fflush(arquivo);
 
@@ -712,7 +712,7 @@ void addReg(char* filename,tRegistro reg){
 
     // inicializa os vetores com zero
     memset(zeros,0,112);
-    memset(null,'0',10);
+    memset(null,0,10);
 
     //Abertura do arquivo para escrita
     arquivo = fopen(filename, "rb+");
@@ -725,7 +725,7 @@ void addReg(char* filename,tRegistro reg){
     }
 
     //Atualiza o cabecalho
-    status = '0';
+    status = 0;
     fwrite(&status, sizeof(status), 1, arquivo);
     fflush(arquivo);
 
@@ -810,7 +810,7 @@ void atualizaReg(char* filename, int RRN, tRegistro reg){
 	}
 
 	//Atualiza o cabecalho
-	status = '0';
+	status = 0;
 	fwrite(&status, sizeof(status), 1, arquivo);
 	fflush(arquivo);
 
@@ -868,7 +868,7 @@ void desfragmentarArq(char* filename){
 	}
 
 	//Atualiza o cabecalho
-	status = '0';
+	status = 0;
 	fwrite(&status, sizeof(char), 1, old);
 	fflush(old);
 
