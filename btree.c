@@ -52,10 +52,21 @@ void insertBTree(BTree* bt, int codEscola, int RRN){
 
 void searchBTree()
 {
-
+    //deve retornar o rrn na arvore
 }
+ //--------------------------------------------------------------------------------------
+ /* RETORNOS
+    1:  registro removido com sucesso
+    -1: registro nao esta na arvore
+ */
+void removeBTree(int codEscola){
+    int FileRRN = -1;
+    
+    //buscar código da escola desejado:
+    FileRRN = searchBTree(codEscola);
 
-void removeBTree()
-{
+    //se o codigo da escola nao existir na arvore, este registro nao pode ser removido
+    if(FileRRN == -1) return -1;
 
+    //
 }
