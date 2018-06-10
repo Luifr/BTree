@@ -22,7 +22,7 @@ void searchBTree()
     -1: registro nao esta na arvore
  */
 void removeBTree(int codEscola){
-    int FileRRN = -1;
+    int fileRRN = -1;
     
     //buscar código da escola desejado:
     FileRRN = searchBTree(codEscola);
