@@ -37,6 +37,8 @@ void insertBTree(BTree* bt, int codEscola, int RRN){
         fread(&noRaiz, sizeof(noRaiz), 1, bfile);
         fread(&altura, sizeof(altura), 1, bfile);
 
+        fseek(bfile,noRaiz*sizeof(,SEEK_CUR);
+
         fwrite(no,sizeof(node),1,bfile);
     }
     
