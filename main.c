@@ -26,11 +26,12 @@ int main(int argc, char* argv[]){
 
     sscanf(argv[1],"%d",&func);
 
-    if(func > 9 || func < 1){
+    if(func > 14 || func < 1){
         printf("Funcao nao existe\n");
         return 1;
     }
 
+    //--------------------------------------------------------------------------------
     if(func == 1){ // le o arquivo CSV e salva no arquivo de saida
         if(argc < 3){
             printf("Faltam argumentos");
@@ -97,6 +98,7 @@ int main(int argc, char* argv[]){
         removeReg(arq_saida, RRN);
     }
 
+    //--------------------------------------------------------------------------------
     else if(func == 6){ // Insere um novo resgistro
         if(argc < 7){
             printf("Faltam argumentos");
@@ -122,6 +124,7 @@ int main(int argc, char* argv[]){
         free(reg.endereco);
     }
 
+    //--------------------------------------------------------------------------------
     else if(func == 7){ // Atualiza um registro
         if(argc < 9){
             printf("Faltam argumentos");
@@ -149,13 +152,40 @@ int main(int argc, char* argv[]){
         free(reg.endereco);
     }
 
+    //--------------------------------------------------------------------------------
     else if(func == 8){ // Compacta o arquivo
 
         desfragmentarArq(arq_saida);
     }
 
+    //--------------------------------------------------------------------------------
     else if(func == 9){ // Retorna os RNN dos registros removidos
         showStack(arq_saida);
+    }
+
+    //---------------------------------------------------------------------------------
+    else if(func == 10){ // Inicializa a arvore
+
+    }
+
+    //---------------------------------------------------------------------------------
+    else if(func == 11){ // Insere um registro
+
+    }
+
+    //---------------------------------------------------------------------------------
+    else if(func == 12){ // Busca por um registro
+
+    }
+
+    //---------------------------------------------------------------------------------
+    else if(func == 13){ // Remocao de um registro
+
+    }
+
+    //---------------------------------------------------------------------------------
+    else if(func == 14){ // Atualizaçao de um registro 
+
     }
 
     return 0;
