@@ -24,10 +24,11 @@ void insertBTree(int codEscola, int RRN){
     //Ordem 10, ou seja 9 chaves e 10 ponteiros
     char status = 0;
     int noRaiz = 0,altura = 0;
+    FILE* bfile;
     node* no;
-    FILE* bfile = fopen(filename,"rb+"); 
+    int rRRN,rIndex,ret = searchBTree(codEscola,&rRRN,&rIndex);
 
-    if(bfile = NULL){ // O arquivo ainda nao foi criado, vamos cria-lo!
+    if(ret == -1){ // O arquivo ainda nao foi criado, vamos cria-lo!
         // criando o arquivo
         bfile = fopen(filename,"wb");
         fwrite(&status, sizeof(status), 1, bfile); // criando o cabecalho
@@ -39,54 +40,36 @@ void insertBTree(int codEscola, int RRN){
         fwrite(no,sizeof(node),1,bfile); // escreve o primeiro no no arquivo 
     }
     else{//existindo o arquivo, preciso inserir o novo registro na posicao apropriada
+        bfile = fopen(filename,"rb+"); 
         fwrite(&status, sizeof(status), 1, bfile);//atualiza o cabecalho
-        fread(&noRaiz, sizeof(noRaiz), 1, bfile);//pega as informacoes
-        fread(&altura, sizeof(altura), 1, bfile);
-
-        fseek(bfile,noRaiz*sizeof(node)+TamCabB,SEEK_SET);//avanca ate o no raiz
+        fseek(bfile,sizeof(node)*rRRN+TamCabB,SEEK_SET);
         fread(no, sizeof(node), 1, bfile);//le o no raiz
 
-        if(no->n == 9){
-            // split <- esse e facil
+        if(rIndex == 10){
+            // spit
         }
         else{
-            int i=0;
-            if (no->K[i].C == 0){//se a primeira posicao do no for vazia, insiro o registro nessa posicao
-                //insere na primeira posição
-                insert(no,0,codEscola,RRN);
+            if(no->K[rIndex].C != 0){
+                // shift
+                int auxCod,auxRRN,auxN = no->n;
+                while(i<nReg && no->K[i].C != 0){
+                    auxCod = no->K[i].C;
+                    auxRRN = no->K[i].PRRN;
+                    insert(no,i,codEscola,RRN);
+                    codEscola = auxCod;
+                    RRN = auxRRN;
+                }
+                no->n = auxN;
+                insert();
+                pointer = 0;
             }
             else{
-                int pointer = 1;//variavel de apoio para laco de repeticao
-                while(pointer){
-                    while(i<nReg && no->K[i].C != 0 && codEscola > no->K[i].C) i++;//procura a posicao certa no no para inserir
-                    
-                    if(no->P[i] != -1){//existindo um nivel inferior, desce na arvore
-                        fseek(bfile,no->P[i]*sizeof(node)+TamCabB,SEEK_SET);//desce a arvore
-                        fread(no, sizeof(node), 1, bfile);//le as informacoes do novo no
-                        i=0;
-                    }
-                    else{//caso nao exista um nivel inferior, achou a posicao do registro, basta inserir
-                        // insere aqui no msm i do ponteiro
-                        // faz o shift dos proximos nao nulos
-                        int auxCod,auxRRN,auxN = no->n;
-                        while(i<nReg && no->K[i].C != 0){
-                            auxCod = no->K[i].C;
-                            auxRRN = no->K[i].PRRN;
-                            insert(no,i,codEscola,RRN);
-                            codEscola = auxCod;
-                            RRN = auxRRN;
-                        }
-                        no->n = auxN;
-                        insert();
-                        pointer = 0;
-                    }
-                }
-
+                // insere aqui msm
             }
         }
-
-    }
     
+    }
+
     status = 1;
     fseek(bfile,0,SEEK_SET);
     fwrite(&status, sizeof(status), 1, bfile);
@@ -96,10 +79,65 @@ void insertBTree(int codEscola, int RRN){
 
 }
 
-void searchBTree()
-{
+int searchBTree(int codEscola, int* RRN, int* index){
     //deve retornar o rrn na arvore
+    char status = 0;
+    int noRaiz = 0,altura = 0;
+    node* no;
+    FILE* bfile = fopen(filename,"rb+"); 
+
+    if(bfile == NULL){ // se for nulo o arquivo n existe
+        return -1;
+    }
+    else{ 
+        fseek(bfile,1,SEEK_SET);
+        fread(&noRaiz, sizeof(noRaiz), 1, bfile);//pega as informacoes
+        fread(&altura, sizeof(altura), 1, bfile);
+
+        *RRN = noRaiz; // atualiza o rrn de retorno
+
+        fseek(bfile,noRaiz*sizeof(node)+TamCabB,SEEK_SET);//avanca ate o no raiz
+        fread(no, sizeof(node), 1, bfile);//le o no raiz
+
+        int i=0;
+        if (no->K[i].C == 0){//se a primeira posicao do no for vazia, insiro o registro nessa posicao
+            //insere na primeira posição
+            *index = 0;
+            fclose(bfile);
+            return 0;
+        }
+        else{
+            while(1){
+                while(i<nReg && no->K[i].C != 0 && codEscola > no->K[i].C) i++;//procura a posicao certa no no para inserir
+                
+                *index = i;
+                
+                if(i != nReg && codEscola == no->K[i].C){ // se o codigoEscola for igual retorna que ja existe
+                    fclose(bfile);
+                    return 1;
+                }
+
+                if(no->P[i] == -1 ){//caso nao exista um nivel inferior, achou a posicao do registro
+                   if(i == nReg){ // se a iteracao acabou, esse no esta cheio
+                       *index = 10;
+                    }
+                    fclose(bfile);
+                    return 0;
+                }
+                //existindo um nivel inferior, desce na arvore
+                *RRN = no->P[i];
+                fseek(bfile,no->P[i]*sizeof(node)+TamCabB,SEEK_SET);//desce a arvore
+                fread(no, sizeof(node), 1, bfile);//le as informacoes do novo no
+                i=0;
+
+
+            }
+
+        }
+
+    }
 }
+
  //--------------------------------------------------------------------------------------
  /* RETORNOS
     1:  registro removido com sucesso

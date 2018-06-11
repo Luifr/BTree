@@ -20,7 +20,11 @@ typedef struct{
 
 void insertBTree();
 
-void searchBTree();
+// Retorno;
+// -1: arquivo nao existe
+// 0: nao achou
+// 1: achou  
+int searchBTree(int codEscola, int* RRN, int* index);
 
 void deleteBTree();
 
