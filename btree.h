@@ -24,7 +24,7 @@ void insertBTree();
 // -1: arquivo nao existe
 // 0: nao achou
 // 1: achou  
-int searchBTree(int codEscola, int* RRN, int* index);
+int searchBTree(int codEscola, int* RRN, int* fatherRRN ,int* index);
 
 void deleteBTree();
 

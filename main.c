@@ -12,6 +12,7 @@ Bruno Del Monde - Nusp: 10262818
 #include <stdlib.h>
 #include <string.h>
 #include "arqInfo.h"
+#include "btree.h"
 
 int main(int argc, char* argv[]){
 
@@ -156,11 +157,14 @@ int main(int argc, char* argv[]){
     else if(func == 8){ // Compacta o arquivo
 
         desfragmentarArq(arq_saida);
+
     }
 
     //--------------------------------------------------------------------------------
     else if(func == 9){ // Retorna os RNN dos registros removidos
+        
         showStack(arq_saida);
+
     }
 
     //---------------------------------------------------------------------------------
@@ -175,16 +179,42 @@ int main(int argc, char* argv[]){
 
     //---------------------------------------------------------------------------------
     else if(func == 12){ // Busca por um registro
+        if(argc < 3){
+            printf("Faltam argumentos");
+            return 1;
+        }
+        int RRN,index,father,codEscola,;
+        sscanf(argv[2],"%d",&codEscola);
+        if(searchBTree(codEscola,&RRN,&father,&index) == 1){
+            //buscando
+            tRegistro* reg = searchRRN(arq_saida, RRN);
 
+            if(reg == NULL)  printf("Registro inexistente.\n");
+            else if(reg == (void*)1){
+                printf("Falha no processamento do arquivo.\n");
+            }
+            else{
+                printf("%d %.10s %.10s %d %s %d %s %d %s\n", reg->codEscola, reg->dataInicio, reg->dataFinal, (int)strlen(reg->nomeEscola), reg->nomeEscola, (int)strlen(reg->municipio), reg->municipio, (int)strlen(reg->endereco), reg->endereco );
+
+            }
+        }
     }
 
     //---------------------------------------------------------------------------------
     else if(func == 13){ // Remocao de um registro
+        if(argc < 3){
+            printf("Faltam argumentos");
+            return 1;
+        }
 
     }
 
     //---------------------------------------------------------------------------------
     else if(func == 14){ // Atualizaçao de um registro
+        if(argc < 10){
+            printf("Faltam argumentos");
+            return 1;
+        }
 
     }
 
