@@ -2,7 +2,8 @@
 #define BTREE_H
 #include "arqInfo.h"
 
-#define btree_size 10
+#define nPointer 10
+#define nReg 9
 #define TamCabB 9
 #define TamRegB 116 //conferir
 
@@ -13,18 +14,17 @@ typedef struct{
 
 typedef struct{
     int n;
-    int P[btree_size];
-    tKey K[btree_size-1];
+    int P[nPointer];
+    tKey K[nReg];
 }node;
-
-
-typedef struct btree{
-    node* head;
-}BTree;
 
 void insertBTree();
 
-void searchBTree();
+// Retorno;
+// -1: arquivo nao existe
+// 0: nao achou
+// 1: achou  
+int searchBTree(int codEscola, int* RRN, int* index);
 
 void deleteBTree();
 
