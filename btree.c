@@ -44,10 +44,10 @@ void insertBTree(int codEscola, int RRN){
 
         no = newNode(); // cria o primeiro no
         insert(no,0,codEscola,RRN);
-        fwrite(no,sizeof(node),1,bfile); // escreve o primeiro no no arquivo 
+        fwrite(no,sizeof(node),1,bfile); // escreve o primeiro no no arquivo
     }
     else{//existindo o arquivo, preciso inserir o novo registro na posicao apropriada
-        bfile = fopen(filename,"rb+"); 
+        bfile = fopen(filename,"rb+");
         fwrite(&status, sizeof(status), 1, bfile);//atualiza o cabecalho
         fseek(bfile,sizeof(node)*rRRN+TamCabB,SEEK_SET);
         fread(no, sizeof(node), 1, bfile);//le o no
@@ -88,7 +88,7 @@ void insertBTree(int codEscola, int RRN){
                 insert(no,rIndex,codEscola,RRN);
             }
         }
-    
+
     }
 
     status = 1;
@@ -105,7 +105,7 @@ int searchBTree(int codEscola, int* RRN, int* fatherRRN , int* index){
     char status = 0;
     int noRaiz = 0,altura = 0;
     node* no;
-    FILE* bfile = fopen(filename,"rb+"); 
+    FILE* bfile = fopen(filename,"rb+");
 
     if(bfile == NULL){ // se for nulo o arquivo n existe
         return -1;
@@ -133,7 +133,7 @@ int searchBTree(int codEscola, int* RRN, int* fatherRRN , int* index){
                 while(i<nReg && no->K[i].C != 0 && codEscola > no->K[i].C) i++;//procura a posicao certa no no para retornar
                 
                 *index = i;
-                
+
                 if(i != nReg && codEscola == no->K[i].C){ // se o codigoEscola for igual retorna que ja existe
                     fclose(bfile);
                     return 1;
@@ -225,7 +225,7 @@ void removeKeyFromLeaf(FILE* treeFile, int RRN, node* this, int fatherRRN, node*
 
 //--------------------------------------------------------------------------------------
 /* RETORNOS A RESPEITO DO NODE 'this':
-  -1: erro 
+  -1: erro
    1: node raiz
    2: !(node raiz || node folha) <<- in between
    3: node folha
@@ -256,25 +256,25 @@ int removeBTree(int codEscola){
     node* father;      //pai de pageWithKey
     char type;
     FILE* treeFile = fopen(filename, "rw+");
-    
+
     //buscar código da escola desejado e se o codigo da escola nao existir na arvore, este registro nao pode ser removido
      if (searchBTree(codEscola, &RRN, &fatherRRN, &index) != 1) return -1;
 
 
-     //pulo o cabecalho e vou ate o registro com a chave procurada: 
-    fseek(treeFile, (TamCabB + (RRN*TamRegB)), SEEK_SET); 
+     //pulo o cabecalho e vou ate o registro com a chave procurada:
+    fseek(treeFile, (TamCabB + (RRN*TamRegB)), SEEK_SET);
     //leio as informaçoes deste RRN em 'pageWithKey'... autoexplicativo nao e mesmo !?  ;D
-    pageWithKey = (node*) malloc (sizeof(node)); 
+    pageWithKey = (node*) malloc (sizeof(node));
     fread(pageWithKey, TamRegB, 1, treeFile);
 
-    
+
     //faco o mesmo com o papis deste node
     fseek(treeFile, (TamCabB + (fatherRRN*TamRegB)), SEEK_SET);
-    father = (node*) malloc (sizeof(node)); 
+    father = (node*) malloc (sizeof(node));
     fread(father, TamRegB, 1, treeFile);
 
 
- 
+
     //agora verifico se estou lidando com uma folha, raiz, ou !essas_coisas:
     type = rootLeafOrInBetween(pageWithKey, father);
 
