@@ -55,20 +55,39 @@ void insertBTree(int codEscola, int RRN){
         if(rIndex == 10){
             // split
             //doSplit(); // argumentos: rrn do no para inserir, rrn do pai; acho q so
-            node* pai;                                                                                                            
+            node* pai, *irma;                                                                                                            
             //Como a ordem eh 10, o split sera de 5 e 5, sendo o primeiro elemento do segundo no
             //o escolhido para promocao, portanto ficaria 5 para o filho esquedo, 4 para o direito e um para o no pai
             
-            //Alocando espaco para a nova raiz
-            pai = newNode();
-            //A antiga raiz sera o filha da nova
-            pai->P[0] = no;
+            //alocando espaco para o novo no
+            irma = newNode();
+            //devo buscar o pai (supondo que nao estou na raiz)
+            if(noRaiz != rRRN){
+                fseek(bfile, sizeof(node)*fatherRRN+TamCabB, SEEK_SET);
+                fread(pai, sizeof(node), 1, bfile);
+            }
+            else{
+                pai = newNode(); //futura nova raiz
+                
+                //decidindo qual chave promover
+                if (rIndex == 5){//a chave que acabou de ser inserida sera promovida
 
-            
-                                    
-                        
-//A chave promovida esta na posicao 5 do no
-//a no irma ficara com 3 chaves                                                                                                                                                                                                                                                                                                                                                                   
+                    for(int i=0; i<4; i++){  
+                        irma->K[i] = no->K[5+i]; //copiando ultimas 4 chaves
+                    }
+                    //necessario uma logica para copiar os ponteiros
+
+                    pai->K[0].C = codEscola;
+                    pai->K[0].PRRN = RRN;
+                    pai->n++;
+                    pai->P[0] = rRRN;
+                    //pai->P[1] = RRN da pagina irma
+                }  
+                else{// 
+
+                }                 
+            }                              
+                                                                                                                                                                                                                                                                                                                                                                   
         }
         else{
             if(no->K[rIndex].C != 0){
@@ -171,6 +190,10 @@ void removeKeyFromLeaf(FILE* treeFile, int RRN, node* this, int fatherRRN, node*
     int nBrotherLeft = 0;  //number of keys in the left brother node
     int nBrotherRight = 0; //number of keys in the right brother node
     node* brother;
+
+    //variaveis uteis para redistribuicao:
+    tKey fatherKey;
+    int toTransfer;
     
     //verifico quantas chaves tem nesse node para saber se uma remocao ira desbalancea-la:
     // uma folha deve ter no minimo (m/2)-1 e no maximo (m-1) cahves
@@ -178,33 +201,144 @@ void removeKeyFromLeaf(FILE* treeFile, int RRN, node* this, int fatherRRN, node*
     //BALANCEAR: _____________________________________________________
     if( (this->n-1) < (nPointer/2)-1 ){ 
         
-        // . . . REDISTRIBUICAO . . .
+        // REDISTRIBUICAO OU CONCATENACAO ??? VAMOS DESCOBRIR ....
+
         //vejo qual posicao de father->P referencia o node com a chave a ser removida:
         for(i = 0; i < nPointer; i++){
            if(father->P[i] == RRN) indexThisRRN = i;
         }
         
-        //verifico quantas chaves tem cada irmao:
-        if(indexThisRRN != 0){
+    
+        side = -1;
+
+        //verifico quantas chaves tem o irmao da direita
+        if(indexThisRRN != 9 && father->P[indexThisRRN+1] != -1){
+            fseek(treeFile, (TamCabB + ( father->P[indexThisRRN+1] * TamRegB)), SEEK_SET);
+            fscanf(treeFile, "%d", &nBrotherRight); 
+            //se for possivel fazer redistribuicao com ele, ja o defino como o irmao q fara isso:
+            if((nBrotherLeft-1) >= (nPointer/2)-1) side = 0;
+        }
+
+        if(indexThisRRN != 0 && father->P[indexThisRRN-1] != -1 && side == -1){
             // indo para irmao da esquerda:
             fseek(treeFile, (TamCabB + ( father->P[indexThisRRN-1] * TamRegB)), SEEK_SET);
             fscanf(treeFile, "%d", &nBrotherLeft); 
-        }
-        if(indexThisRRN != 9){
-            // indo para irmao da direita:
-            fseek(treeFile, (TamCabB + ( father->P[indexThisRRN+1] * TamRegB)), SEEK_SET);
-            fscanf(treeFile, "%d", &nBrotherRight); 
+            //se for possivel fazer redistribuicao com ele, o defino como o irmao q fara isso:
+            if ((nBrotherRight-1) >= (nPointer/2)-1) side = 1;
+    
         }
 
-        //verifico qual irmao tem chaves o suficiente para redistribuir (preferencialmente o com mais chaves)...
-        if((nBrotherLeft-1) >= (nPointer/2)-1 && (nBrotherLeft-1) >= (nPointer/2)-1) {
-            if(nBrotherLeft >= nBrotherRight) side = 0;
-            else side = 1;
+        //apagando a chave a ser removida:
+        for(i = index; i < this->n-1 ; i++){
+            this->K[i] = this->K[i+1];
         }
-        else{
-            if()
-        }
+        this->n--; 
+        brother = (node*) malloc (sizeof(node));
 
+         //REDISTRIBUICAO ************************
+        if (side != -1){
+            
+            // numero de chaves para cada irmao : (this->n + nBrotherLeft)/2 
+            //numero de chaves que vao para 'this': (this->n + nBrotherLeft)/2 - this->n
+            toTransfer = (this->n + nBrotherLeft)/2 - this->n;
+
+
+            if(side == 0){ //IRMAO NA ESQUERDA -----------
+                fatherKey = father->K[indexThisRRN - 1]; //salvando a chave pai, pois 'father->K[indexThisRRN + 1]' sera substituido
+                fseek(treeFile, (TamCabB + ( father->P[indexThisRRN-1] * TamRegB)), SEEK_SET); //indo pro irmao no arquivo
+                fread(brother, TamRegB, 1, treeFile); //salvando irmao na struct
+
+                father->K[indexThisRRN - 1] = brother->K[brother->n - toTransfer]; //colocando a nova chave pai  (que vem do irmao) em seu lugar 
+                brother->n--; // como tranferi a chave do irmao pro pai, irmao tem uma chave a menos
+
+                /*neste caso, como o irmao esta na esquerda do node 'this'... preciso shiftar 'this' para direita para dar espaco
+                  para as novas chaves que virao de seu irmao e ficarao mais a sua esquerda*/
+                for(i = this->n -1; i >= 0; i++){
+                    this->K[i+toTransfer] = this->K[i];
+                }
+
+                this->K[toTransfer-1] = fatherKey; //a chave que era pai passa a fazer parte do node com a chave que foi removida (this)
+                this->n++; //agora, o node 'this' tem uma chave a mais 
+
+                //passando as chaves de 'brother' para 'this':
+                for(i = 0; i < toTransfer -1; i++){ //(toTransfer - 1) pois a ultima chave ja foi transferida para o pai, nao para 'this'
+                    this->K[toTransfer-2-i] = brother->K[(brother->n+2-toTransfer)+i];
+                    //atualizando a quantidade de chaves de 'this' (e de 'brother' fora do for) ja que estou tirando de um e colocando em outro:
+                    this->n++; 
+                }
+                brother->n -= (toTransfer - 1); // atualizo a quantidade de chaves que tem o node
+
+            }
+
+
+            else {//side == 1 __ IRMAO NA DIREITA -------
+                fatherKey = father->K[indexThisRRN];
+                fseek(treeFile, (TamCabB + ( father->P[indexThisRRN+1] * TamRegB)), SEEK_SET);
+                fread(brother, TamRegB, 1, treeFile);
+
+                father->K[indexThisRRN] = brother->K[toTransfer-1]; //colocando a nova chave pai  (que vem do irmao) em seu lugar 
+                brother->n--; // como tranferi a chave do irmao pro pai, irmao tem uma chave a menos
+
+                this->K[this->n] = fatherKey; //a chave que era pai passa a fazer parte do node com a chave que foi removida (this)
+                this->n++; //agora, o node 'this' tem uma chave a mais 
+
+                //passando as chaves de 'brother' para 'this':
+                for(i = 0; i < toTransfer -1; i++){ //(toTransfer - 1) pois a ultima chave ja foi transferida para o pai, nao para 'this'
+                    this->K[this->n] = brother->K[i];
+                    //atualizando a quantidade de chaves de 'this' e 'brother' ja que estou tirando de um e colocando em outro:
+                    this->n++; 
+                    brother->n--;
+                }
+
+                //antes apenas atualizei 'brother->n', agora irei realmente apaga-los de brother, shiftando as chaves para esquerda:
+                for(i = 0; i < brother->n; i++){
+                    brother->K[i] = brother->K[i+toTransfer];
+                }
+            }
+            
+        }
+        //CONCATECAO **********************************
+        else {
+            //se o node nao estiver na extrema direita, concateno com o irmao da direita
+            if(indexThisRRN != 9 && father->P[indexThisRRN+1] != -1){
+                fseek(treeFile, (TamCabB + ( father->P[indexThisRRN+1] * TamRegB)), SEEK_SET);
+                fread(brother, TamRegB, 1, treeFile);
+
+                //'desco' a chave pai do node pai para 'this':
+                 this->K[this->n] = father->K[indexThisRRN];
+                 this->n++;
+
+                //removo a chave pai do node pai (pois agora esta no filho)
+                for(i = indexThisRRN; i < father->n - 1; i++){
+                    father->K[i] = father->K[i+1];
+                    /*neste caso nao se trata de uma folha, por isso preciso cuidar dos ponteiros, e isso ja faz com que
+                    o 'ponteiro' com referencia ao rrn do irmao da direita suma do pai  :P iei !!!  */
+                    father->P[i+1] = father->P[i+2]; 
+                }
+                father->n--; // o pai agora tem uma chave a menos
+                
+                //passo as chaves do irmao para 'this'
+                for(i = 0; i < brother->n; i++){
+                    this->K[this->n] = brother->K[i];                    
+                    //atualizo a quantidade de chaves do node 'this' (nao preciso atualizar do irmao pois seu rrn nao existira mais):
+                    this->n++;
+                }
+
+                //OTIMO, infelizmente ainda nao acabou, preciso ver se o pai foi desbalanceado :
+                
+                if(father->n < (nPointer/2)){ //pai desbalanceado 
+                    //concatenar o redistribuir com seu irmao
+                }
+                //else --> pai ta certinho
+                
+            }
+            //CASO NAO EXISTA IRMAO DA DIREITA:
+            else if(father->P[indexThisRRN-1] != -1){ 
+                fseek(treeFile, (TamCabB + ( father->P[indexThisRRN-1] * TamRegB)), SEEK_SET); //indo pro irmao no arquivo
+                fread(brother, TamRegB, 1, treeFile); //salvando irmao na struct
+            }
+        }
+            
 
     }
     //SOMENTE REMOVER:  ________________________________________________
@@ -212,7 +346,7 @@ void removeKeyFromLeaf(FILE* treeFile, int RRN, node* this, int fatherRRN, node*
         //deixo todas as chaves que sobraram o mais a esquerda possivel 
         //(isso ja apaga a chave com o codigo de escola que se quer remover):
         this->n--; 
-        for(i = index; i < nReg-1; i++){
+        for(i = index; i < this->n-1; i++){
             this->K[i] = this->K[i+1];
         }
         fseek(treeFile, (TamCabB + (RRN*TamRegB)), SEEK_SET); 
