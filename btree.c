@@ -424,3 +424,100 @@ int removeBTree(int codEscola){
     free(father);
     free(pageWithKey);
 }
+
+//Falta iniciar, revisar e comentar
+
+void BufferInit() {
+	buffer = malloc(sizeof(struct BUFFER) * 4);
+	root = malloc(sizeof(struct BUFFER));
+}
+
+//Essa função grava source no arquivo arq
+void bsave(FILE* arq, struct BUFFER* source) {
+	int i;
+
+	fseek(arq, TamRegB * source->n_page, SEEK_SET);
+	fwrite(&source->page.n, sizeof(int), 1, arq);
+
+	for (i = 0; i < nReg; ++i) {
+		fwrite(source->page.P + i, sizeof(int), 1, arq);
+		fwrite(source->page.K + i, sizeof(int), 1, arq);
+	}
+
+	fwrite(&source->page.P + 9, sizeof(int), 1, arq);
+}
+
+//Essa função lê a página page do arquivo arq e salva no buffer destination
+void bget(FILE* arq, struct BUFFER* destination, int page) {
+	int i;
+	destination->n_page = page;
+
+	fseek(arq, TamRegB * page, SEEK_SET);
+	fread(&destination->page.n, sizeof(int), 1, arq);
+
+	for (i = 0; i < nReg; ++i) {
+		fread(destination->page.P + i, sizeof(int), 1, arq);
+		fread(destination->page.K + i, sizeof(int), 1, arq);
+	}
+
+	fread(&destination->page.P + 9, sizeof(int), 1, arq);
+}
+
+void PageRead(FILE* arq, int page, node* destination) {
+	int i;
+
+	if (page == root->n_page) {
+		memcpy(destination, &root->page, sizeof(node));
+		return;
+	}
+
+	for (i = 0; i < bfill; ++i)
+		if (page == buffer[i].n_page) {
+			memcpy(destination, &buffer[i].page, sizeof(node));
+			bleast = i;
+			return;
+		}
+
+	if (bfill < bufferTAM) {
+		bget(arq, buffer + bfill, page);
+		memcpy(destination, &buffer[bfill].page, sizeof(node));
+		bleast = bfill++;
+	}
+
+	bsave(arq, buffer + bleast);
+	bget(arq, buffer + bleast, page);
+	memcpy(destination, &buffer[bleast].page, sizeof(node));
+}
+
+void PageWrite(FILE* arq, int page, node* source) {
+	int i;
+
+	if (page == root->n_page) {
+		memcpy(&root->page, source, sizeof(node));
+		return;
+	}
+
+	for (i = 0; i < bfill; ++i)
+		if (page == buffer[i].n_page) {
+			memcpy(&buffer[i].page, source, sizeof(node));
+			bleast = i;
+			return;
+		}
+
+	if (bfill < bufferTAM) {
+		memcpy(source, &buffer[bfill].page, sizeof(node));
+		bleast = bfill++;
+	}
+
+	bsave(arq, buffer + bleast);
+	buffer[bleast].n_page = page;
+	memcpy(&buffer[bleast].page, source, sizeof(node));
+}
+
+void BufferEnd(FILE* arq) {
+	while (bfill--)
+		bsave(arq, buffer + bfill);
+
+	free(buffer);
+	free(root);
+}

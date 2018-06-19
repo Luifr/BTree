@@ -6,6 +6,7 @@
 #define nReg 9
 #define TamCabB 9
 #define TamRegB 116 //conferir
+#define bufferTAM 4
 
 typedef struct{
     int C;
@@ -17,6 +18,15 @@ typedef struct{
     int P[nPointer];
     tKey K[nReg];
 }node;
+
+struct BUFFER {
+    node page;
+    int n_page;
+} *buffer, *root;
+
+int bleast, bfill = 0;
+
+void BufferInit();
 
 void insertBTree();
 
