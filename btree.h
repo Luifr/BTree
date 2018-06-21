@@ -1,5 +1,5 @@
-#ifndef BTREE_H
-#define BTREE_H
+#ifndef BTREE_H_
+#define BTREE_H_
 #include "arqInfo.h"
 
 #define nPointer 10
@@ -24,9 +24,12 @@ struct BUFFER {
     int n_page;
 } *buffer, *root;
 
-int bleast, bfill = 0;
+int bleast;
 
 void BufferInit();
+void BufferEnd();
+
+
 
 void insertBTree();
 
@@ -34,7 +37,7 @@ void insertBTree();
 // -1: arquivo nao existe
 // 0: nao achou
 // 1: achou  
-int searchBTree(int codEscola, int* RRN, int* fatherRRN ,int* index);
+int searchBTree(int codEscola, int* RRN, int* fatherRRN ,int* index, int* ad_RRN);
 
 void deleteBTree();
 

@@ -183,11 +183,11 @@ int main(int argc, char* argv[]){
             printf("Faltam argumentos");
             return 1;
         }
-        int RRN,index,father,codEscola,;
+        int RRN,index,father,codEscola,ad_rrn;
         sscanf(argv[2],"%d",&codEscola);
-        if(searchBTree(codEscola,&RRN,&father,&index) == 1){
+        if(searchBTree(codEscola,&RRN,&father,&index,&ad_rrn) == 1){
             //buscando
-            tRegistro* reg = searchRRN(arq_saida, RRN);
+            tRegistro* reg = searchRRN(arq_saida, (char*)&ad_rrn);
 
             if(reg == NULL)  printf("Registro inexistente.\n");
             else if(reg == (void*)1){
@@ -197,6 +197,9 @@ int main(int argc, char* argv[]){
                 printf("%d %.10s %.10s %d %s %d %s %d %s\n", reg->codEscola, reg->dataInicio, reg->dataFinal, (int)strlen(reg->nomeEscola), reg->nomeEscola, (int)strlen(reg->municipio), reg->municipio, (int)strlen(reg->endereco), reg->endereco );
 
             }
+        }
+        else{
+            printf("Registro inexistente.\n");
         }
     }
 

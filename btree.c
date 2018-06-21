@@ -5,7 +5,11 @@
 #include "btree.h"
 
 
+void PageWrite(FILE* arq, int page, node* source);
+void PageRead(FILE* arq, int page, node* source);
+
 char filename[] = "btree.dat";
+int bfill = 0;
 
 node* newNode(){
     node* n = malloc(sizeof(node));
@@ -22,7 +26,7 @@ void insert(node* no, int index, int codEscola, int RRN){
 }
 
 void doSplit(int i, node* no){
-    
+
 
     
 }
@@ -30,10 +34,10 @@ void doSplit(int i, node* no){
 void insertBTree(int codEscola, int RRN){
     //Ordem 10, ou seja 9 chaves e 10 ponteiros
     char status = 0;
-    int noRaiz = 0,altura = 0,fatherRRN;
+    int noRaiz = 0,altura = 0,fatherRRN,ad_rrn;
     FILE* bfile;
     node* no;
-    int rRRN,rIndex,ret = searchBTree(codEscola,&rRRN,&fatherRRN,&rIndex);
+    int rRRN,rIndex,ret = searchBTree(codEscola,&rRRN,&fatherRRN,&rIndex,&ad_rrn);
 
     if(ret == -1){ // O arquivo ainda nao foi criado, vamos cria-lo!
         // criando o arquivo
@@ -49,6 +53,7 @@ void insertBTree(int codEscola, int RRN){
     else{//existindo o arquivo, preciso inserir o novo registro na posicao apropriada
         bfile = fopen(filename,"rb+");
         fwrite(&status, sizeof(status), 1, bfile);//atualiza o cabecalho
+        //readBP(no,rRRN);
         fseek(bfile,sizeof(node)*rRRN+TamCabB,SEEK_SET);
         fread(no, sizeof(node), 1, bfile);//le o no
 
@@ -70,9 +75,10 @@ void insertBTree(int codEscola, int RRN){
                 pai = newNode(); //futura nova raiz
                 
                 //decidindo qual chave promover
-                if (rIndex == 5){//a chave que acabou de ser inserida sera promovida
+                if (rIndex <= 5){//a chave nova ficara no no da esquerda
 
-                    for(int i=0; i<4; i++){  
+                    int auxCod, auxRRN, auxN = no->n, j = rIndex;
+                    for(int i=0; i<5; i++){                          
                         irma->K[i] = no->K[5+i]; //copiando ultimas 4 chaves
                     }
                     //necessario uma logica para copiar os ponteiros
@@ -92,13 +98,15 @@ void insertBTree(int codEscola, int RRN){
         else{
             if(no->K[rIndex].C != 0){
                 // shift
-                int auxCod,auxRRN,auxN = no->n,i=rIndex;
+                int auxCod,auxRRN,auxN = no->n,i=rIndex, j= no->n;
                 while(i<nReg && no->K[i].C != 0){
+                    insert(no, j, no->K[j-i], )
                     auxCod = no->K[i].C;
                     auxRRN = no->K[i].PRRN;
                     insert(no,i,codEscola,RRN);
                     codEscola = auxCod;
                     RRN = auxRRN;
+                    i++;
                 }
                 no->n = auxN;
                 insert(no,i,codEscola,RRN);
@@ -119,7 +127,7 @@ void insertBTree(int codEscola, int RRN){
 
 }
 
-int searchBTree(int codEscola, int* RRN, int* fatherRRN , int* index){
+int searchBTree(int codEscola, int* RRN, int* fatherRRN , int* index, int* ad_RRN){
     //deve retornar o rrn na arvore
     char status = 0;
     int noRaiz = 0,altura = 0;
@@ -138,8 +146,9 @@ int searchBTree(int codEscola, int* RRN, int* fatherRRN , int* index){
         *RRN = noRaiz; // atualiza o rrn de retorno
         *fatherRRN = -1; // o pai inicialmente e nullo
 
-        fseek(bfile,noRaiz*sizeof(node)+TamCabB,SEEK_SET);//avanca ate o no raiz
         fread(no, sizeof(node), 1, bfile);//le o no raiz
+        // fseek(bfile,noRaiz*sizeof(node)+TamCabB,SEEK_SET);//avanca ate o no raiz
+        // fread(no, sizeof(node), 1, bfile);//le o no raiz
 
         int i=0;
         if (no->K[i].C == 0){//se a primeira posicao do no for vazia, este no esta vazio. fim da funcao
@@ -155,6 +164,7 @@ int searchBTree(int codEscola, int* RRN, int* fatherRRN , int* index){
 
                 if(i != nReg && codEscola == no->K[i].C){ // se o codigoEscola for igual retorna que ja existe
                     fclose(bfile);
+                    *ad_RRN = no->K[i].PRRN;
                     return 1;
                 }
 
@@ -386,13 +396,14 @@ int removeBTree(int codEscola){
     int RRN = -1;     //RRN do no que contem o registro com o codigo procurado
     int fatherRRN;    //RRN do node pai do node que contem a chave a ser removida
     int index = -1;   //Qual tKey dentro do especificado pelo RRN (vai de 0 a 9)
+    int ad_rrn;
     node* pageWithKey; //variavel que recebera o conteudo da pagina com a chave a ser removida
     node* father;      //pai de pageWithKey
     char type;
     FILE* treeFile = fopen(filename, "rw+");
 
     //buscar código da escola desejado e se o codigo da escola nao existir na arvore, este registro nao pode ser removido
-     if (searchBTree(codEscola, &RRN, &fatherRRN, &index) != 1) return -1;
+     if (searchBTree(codEscola, &RRN, &fatherRRN, &index, &ad_rrn) != 1) return -1;
 
 
      //pulo o cabecalho e vou ate o registro com a chave procurada:
@@ -436,7 +447,7 @@ void BufferInit() {
 void bsave(FILE* arq, struct BUFFER* source) {
 	int i;
 
-	fseek(arq, TamRegB * source->n_page, SEEK_SET);
+	fseek(arq, TamRegB * source->n_page + TamCabB, SEEK_SET);
 	fwrite(&source->page.n, sizeof(int), 1, arq);
 
 	for (i = 0; i < nReg; ++i) {
@@ -452,7 +463,7 @@ void bget(FILE* arq, struct BUFFER* destination, int page) {
 	int i;
 	destination->n_page = page;
 
-	fseek(arq, TamRegB * page, SEEK_SET);
+	fseek(arq, TamRegB * page + TamCabB , SEEK_SET);
 	fread(&destination->page.n, sizeof(int), 1, arq);
 
 	for (i = 0; i < nReg; ++i) {
@@ -482,6 +493,7 @@ void PageRead(FILE* arq, int page, node* destination) {
 		bget(arq, buffer + bfill, page);
 		memcpy(destination, &buffer[bfill].page, sizeof(node));
 		bleast = bfill++;
+        return;
 	}
 
 	bsave(arq, buffer + bleast);
@@ -507,6 +519,7 @@ void PageWrite(FILE* arq, int page, node* source) {
 	if (bfill < bufferTAM) {
 		memcpy(source, &buffer[bfill].page, sizeof(node));
 		bleast = bfill++;
+        return;
 	}
 
 	bsave(arq, buffer + bleast);
