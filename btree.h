@@ -4,7 +4,7 @@
 
 #define nPointer 10
 #define nReg 9
-#define TamCabB 9
+#define TamCabB 13
 #define TamRegB 116 //conferir
 #define bufferTAM 4
 

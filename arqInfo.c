@@ -963,7 +963,6 @@ void desfragmentarArq(char* filename){
 void showStack(char* fileName){
     // declaracoes e abrir o arquivo para leitura
     FILE* arquivo = fopen(fileName,"rb");
-    char c;
     int topoPilha;
 
     if (!arquivo){

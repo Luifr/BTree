@@ -4,12 +4,116 @@
 #include <errno.h>
 #include "btree.h"
 
-
-void PageWrite(FILE* arq, int page, node* source);
-void PageRead(FILE* arq, int page, node* source);
-
 char filename[] = "btree.dat";
 int bfill = 0;
+
+//Saída e comentar
+void BufferInit() {
+	buffer = malloc(sizeof(struct BUFFER) * 4);
+	root = malloc(sizeof(struct BUFFER));
+}
+
+//Essa função grava source no arquivo arq
+void bsave(struct BUFFER* source) {
+	int i;
+    FILE* arq = fopen(filename, "rb+");
+
+	fseek(arq, TamRegB * source->n_page + TamCabB, SEEK_SET);
+	fwrite(&source->page.n, sizeof(int), 1, arq);
+
+	for (i = 0; i < nReg; ++i) {
+		fwrite(source->page.P + i, sizeof(int), 1, arq);
+		fwrite(source->page.K + i, sizeof(int), 1, arq);
+	}
+
+	fwrite(&source->page.P + 9, sizeof(int), 1, arq);
+    fclose(arq);
+}
+
+//Essa função lê a página page do arquivo arq e salva no buffer destination
+void bget(struct BUFFER* destination, int page) {
+	int i;
+    FILE* arq = fopen(filename, "rb+");
+	destination->n_page = page;
+
+	fseek(arq, TamRegB * page + TamCabB , SEEK_SET);
+	fread(&destination->page.n, sizeof(int), 1, arq);
+
+	for (i = 0; i < nReg; ++i) {
+		fread(destination->page.P + i, sizeof(int), 1, arq);
+		fread(destination->page.K + i, sizeof(int), 1, arq);
+	}
+
+	fread(&destination->page.P + 9, sizeof(int), 1, arq);
+    fclose(arq);
+}
+
+void RootUpdate(int page, node* no) {
+    root->n_page = page;
+    memcpy(&root->page, no, TamRegB);
+    bsave(root);    
+}
+
+void PageRead(int page, node* destination) {
+	int i;
+
+	if (page == root->n_page) {
+		memcpy(destination, &root->page, sizeof(node));
+		return;
+	}
+
+	for (i = 0; i < bfill; ++i)
+		if (page == buffer[i].n_page) {
+			memcpy(destination, &buffer[i].page, sizeof(node));
+			bleast = i;
+			return;
+		}
+
+	if (bfill < bufferTAM) {
+		bget(buffer + bfill, page);
+		memcpy(destination, &buffer[bfill].page, sizeof(node));
+		bleast = bfill++;
+        return;
+	}
+
+	bsave(buffer + bleast);
+	bget(buffer + bleast, page);
+	memcpy(destination, &buffer[bleast].page, sizeof(node));
+}
+
+void PageWrite(int page, node* source) {
+	int i;
+
+	if (page == root->n_page) {
+		memcpy(&root->page, source, sizeof(node));
+		return;
+	}
+
+	for (i = 0; i < bfill; ++i)
+		if (page == buffer[i].n_page) {
+			memcpy(&buffer[i].page, source, sizeof(node));
+			bleast = i;
+			return;
+		}
+
+	if (bfill < bufferTAM) {
+		memcpy(source, &buffer[bfill].page, sizeof(node));
+		bleast = bfill++;
+        return;
+	}
+
+	bsave(buffer + bleast);
+	buffer[bleast].n_page = page;
+	memcpy(&buffer[bleast].page, source, sizeof(node));
+}
+
+void BufferEnd(FILE* arq) {
+	while (bfill--)
+		bsave(buffer + bfill);
+
+	free(buffer);
+	free(root);
+}
 
 node* newNode(){
     node* n = malloc(sizeof(node));
@@ -27,14 +131,32 @@ void insert(node* no, int index, int codEscola, int RRN){
 
 void doSplit(int i, node* no){
 
+}
 
-    
+void shiftright(node* no, int rIndex){
+    int auxN = no->n, i=rIndex, j= no->n;
+    if (j == 9) j = 8;
+    while(j != i-1){
+        insert(no, j, no->K[j-i].C, no->K[j-1].PRRN);
+        j--;
+    }    
+    no->n = auxN;
+}
+
+void shiftleft(node* no){
+    int auxN = no->n, i=no->n-1;
+    //if (j == 9) j = 8;
+    while(i > 0){
+        insert(no, i-1 , no->K[i].C, no->K[i].PRRN);
+        i--;
+    }    
+    no->n = auxN;
 }
 
 void insertBTree(int codEscola, int RRN){
     //Ordem 10, ou seja 9 chaves e 10 ponteiros
     char status = 0;
-    int noRaiz = 0,altura = 0,fatherRRN,ad_rrn;
+    int noRaiz = 0, altura = 0, ultimoRRN = 0,  fatherRRN, ad_rrn;
     FILE* bfile;
     node* no;
     int rRRN,rIndex,ret = searchBTree(codEscola,&rRRN,&fatherRRN,&rIndex,&ad_rrn);
@@ -45,17 +167,25 @@ void insertBTree(int codEscola, int RRN){
         fwrite(&status, sizeof(status), 1, bfile); // criando o cabecalho
         fwrite(&noRaiz, sizeof(noRaiz), 1, bfile);
         fwrite(&altura, sizeof(altura), 1, bfile);
+        fwrite(&ultimoRRN, sizeof(ultimoRRN), 1, bfile);
 
         no = newNode(); // cria o primeiro no
-        insert(no,0,codEscola,RRN);
-        fwrite(no,sizeof(node),1,bfile); // escreve o primeiro no no arquivo
+        insert(no,0,codEscola,RRN); // insere no nó
+        PageWrite( 0 , no); // escreve o primeiro no
+        root->n_page = 0; // inicializando a raiz do buffer pool
+        memcpy(&root->page,no,TamRegB);
     }
     else{//existindo o arquivo, preciso inserir o novo registro na posicao apropriada
         bfile = fopen(filename,"rb+");
+
         fwrite(&status, sizeof(status), 1, bfile);//atualiza o cabecalho
-        //readBP(no,rRRN);
-        fseek(bfile,sizeof(node)*rRRN+TamCabB,SEEK_SET);
-        fread(no, sizeof(node), 1, bfile);//le o no
+        fread(&noRaiz, sizeof(noRaiz), 1, bfile);
+        fread(&altura, sizeof(altura), 1, bfile);
+        fread(&ultimoRRN, sizeof(ultimoRRN), 1, bfile);
+        
+        // fseek(bfile,sizeof(node)*rRRN+TamCabB,SEEK_SET);
+        // fread(no, sizeof(node), 1, bfile);//le o no
+        PageRead( rRRN , no);
 
         if(rIndex == 10){
             // split
@@ -68,28 +198,31 @@ void insertBTree(int codEscola, int RRN){
             irma = newNode();
             //devo buscar o pai (supondo que nao estou na raiz)
             if(noRaiz != rRRN){
-                fseek(bfile, sizeof(node)*fatherRRN+TamCabB, SEEK_SET);
-                fread(pai, sizeof(node), 1, bfile);
+                // fseek(bfile, sizeof(node)*fatherRRN+TamCabB, SEEK_SET);
+                // fread(pai, sizeof(node), 1, bfile);
+                PageRead( noRaiz , no);
             }
             else{
-                pai = newNode(); //futura nova raiz
+                pai = newNode(); //futura nova raiz, RRN dela sera ultimoRRN + 2
                 
                 //decidindo qual chave promover
                 if (rIndex <= 5){//a chave nova ficara no no da esquerda
-
-                    int auxCod, auxRRN, auxN = no->n, j = rIndex;
-                    for(int i=0; i<5; i++){                          
-                        irma->K[i] = no->K[5+i]; //copiando ultimas 4 chaves
-                    }
-                    //necessario uma logica para copiar os ponteiros
-
-                    pai->K[0].C = codEscola;
-                    pai->K[0].PRRN = RRN;
+                    pai->K[0].C = no->K[4].C;
+                    pai->K[0].PRRN = no->K[4].PRRN;
                     pai->n++;
                     pai->P[0] = rRRN;
-                    //pai->P[1] = RRN da pagina irma
+                    pai->P[1] = ultimoRRN + 1;
+                    
+                    for(int i=0; i<4; i++){                          
+                        irma->K[i] = no->K[5+i]; //copiando ultimas 5 chaves
+                    }
+                    no->n -= 4
+                    //liberando espaço para nova chave no no esquerdo
+                    shiftright(no, rIndex);
+                    insert(no, rIndex, codEscola, RRN);
+
                 }  
-                else{// 
+                else{// a chave nova ficara no no da direit
 
                 }                 
             }                              
@@ -98,18 +231,8 @@ void insertBTree(int codEscola, int RRN){
         else{
             if(no->K[rIndex].C != 0){
                 // shift
-                int auxCod,auxRRN,auxN = no->n,i=rIndex, j= no->n;
-                while(i<nReg && no->K[i].C != 0){
-                    insert(no, j, no->K[j-i], )
-                    auxCod = no->K[i].C;
-                    auxRRN = no->K[i].PRRN;
-                    insert(no,i,codEscola,RRN);
-                    codEscola = auxCod;
-                    RRN = auxRRN;
-                    i++;
-                }
-                no->n = auxN;
-                insert(no,i,codEscola,RRN);
+                shiftright(no, rIndex);                                
+                insert(no,rIndex,codEscola,RRN);
             }
             else{
                 insert(no,rIndex,codEscola,RRN);
@@ -129,7 +252,6 @@ void insertBTree(int codEscola, int RRN){
 
 int searchBTree(int codEscola, int* RRN, int* fatherRRN , int* index, int* ad_RRN){
     //deve retornar o rrn na arvore
-    char status = 0;
     int noRaiz = 0,altura = 0;
     node* no;
     FILE* bfile = fopen(filename,"rb+");
@@ -146,7 +268,7 @@ int searchBTree(int codEscola, int* RRN, int* fatherRRN , int* index, int* ad_RR
         *RRN = noRaiz; // atualiza o rrn de retorno
         *fatherRRN = -1; // o pai inicialmente e nullo
 
-        fread(no, sizeof(node), 1, bfile);//le o no raiz
+        PageRead( noRaiz , no);//le o no raiz
         // fseek(bfile,noRaiz*sizeof(node)+TamCabB,SEEK_SET);//avanca ate o no raiz
         // fread(no, sizeof(node), 1, bfile);//le o no raiz
 
@@ -178,10 +300,11 @@ int searchBTree(int codEscola, int* RRN, int* fatherRRN , int* index, int* ad_RR
                 //existindo um nivel inferior, desce na arvore
                 *fatherRRN = *RRN; // ao descer na arvore, o pai vira o no atual
                 *RRN = no->P[i];
-                fseek(bfile,no->P[i]*sizeof(node)+TamCabB,SEEK_SET);//desce a arvore
-                fread(no, sizeof(node), 1, bfile);//le as informacoes do novo no
-                i=0;  
 
+                // fseek(bfile,no->P[i]*sizeof(node)+TamCabB,SEEK_SET);//desce a arvore
+                // fread(no, sizeof(node), 1, bfile);//le as informacoes do novo no
+                PageRead( no->P[i] , no); // desce na arvore
+                i=0;  
 
             }
 
@@ -434,103 +557,4 @@ int removeBTree(int codEscola){
     fclose(treeFile);
     free(father);
     free(pageWithKey);
-}
-
-//Falta iniciar, revisar e comentar
-
-void BufferInit() {
-	buffer = malloc(sizeof(struct BUFFER) * 4);
-	root = malloc(sizeof(struct BUFFER));
-}
-
-//Essa função grava source no arquivo arq
-void bsave(FILE* arq, struct BUFFER* source) {
-	int i;
-
-	fseek(arq, TamRegB * source->n_page + TamCabB, SEEK_SET);
-	fwrite(&source->page.n, sizeof(int), 1, arq);
-
-	for (i = 0; i < nReg; ++i) {
-		fwrite(source->page.P + i, sizeof(int), 1, arq);
-		fwrite(source->page.K + i, sizeof(int), 1, arq);
-	}
-
-	fwrite(&source->page.P + 9, sizeof(int), 1, arq);
-}
-
-//Essa função lê a página page do arquivo arq e salva no buffer destination
-void bget(FILE* arq, struct BUFFER* destination, int page) {
-	int i;
-	destination->n_page = page;
-
-	fseek(arq, TamRegB * page + TamCabB , SEEK_SET);
-	fread(&destination->page.n, sizeof(int), 1, arq);
-
-	for (i = 0; i < nReg; ++i) {
-		fread(destination->page.P + i, sizeof(int), 1, arq);
-		fread(destination->page.K + i, sizeof(int), 1, arq);
-	}
-
-	fread(&destination->page.P + 9, sizeof(int), 1, arq);
-}
-
-void PageRead(FILE* arq, int page, node* destination) {
-	int i;
-
-	if (page == root->n_page) {
-		memcpy(destination, &root->page, sizeof(node));
-		return;
-	}
-
-	for (i = 0; i < bfill; ++i)
-		if (page == buffer[i].n_page) {
-			memcpy(destination, &buffer[i].page, sizeof(node));
-			bleast = i;
-			return;
-		}
-
-	if (bfill < bufferTAM) {
-		bget(arq, buffer + bfill, page);
-		memcpy(destination, &buffer[bfill].page, sizeof(node));
-		bleast = bfill++;
-        return;
-	}
-
-	bsave(arq, buffer + bleast);
-	bget(arq, buffer + bleast, page);
-	memcpy(destination, &buffer[bleast].page, sizeof(node));
-}
-
-void PageWrite(FILE* arq, int page, node* source) {
-	int i;
-
-	if (page == root->n_page) {
-		memcpy(&root->page, source, sizeof(node));
-		return;
-	}
-
-	for (i = 0; i < bfill; ++i)
-		if (page == buffer[i].n_page) {
-			memcpy(&buffer[i].page, source, sizeof(node));
-			bleast = i;
-			return;
-		}
-
-	if (bfill < bufferTAM) {
-		memcpy(source, &buffer[bfill].page, sizeof(node));
-		bleast = bfill++;
-        return;
-	}
-
-	bsave(arq, buffer + bleast);
-	buffer[bleast].n_page = page;
-	memcpy(&buffer[bleast].page, source, sizeof(node));
-}
-
-void BufferEnd(FILE* arq) {
-	while (bfill--)
-		bsave(arq, buffer + bfill);
-
-	free(buffer);
-	free(root);
 }
