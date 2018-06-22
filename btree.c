@@ -144,12 +144,12 @@ void shiftright(node* no, int rIndex){
 }
 
 void shiftleft(node* no){
-    int auxN = no->n, i=no->n-1;
+    int auxN = no->n-1, i=no->n-1;
     //if (j == 9) j = 8;
     while(i > 0){
         insert(no, i-1 , no->K[i].C, no->K[i].PRRN);
         i--;
-    }    
+    }
     no->n = auxN;
 }
 
@@ -206,27 +206,49 @@ void insertBTree(int codEscola, int RRN){
                 pai = newNode(); //futura nova raiz, RRN dela sera ultimoRRN + 2
                 
                 //decidindo qual chave promover
-                if (rIndex <= 5){//a chave nova ficara no no da esquerda
-                    pai->K[0].C = no->K[4].C;
-                    pai->K[0].PRRN = no->K[4].PRRN;
-                    pai->n++;
+                if (rIndex < 5){//a chave nova ficara no no da esquerda
+                    insert(pai,0,no->K[4].C,no->K[4].PRRN);
                     pai->P[0] = rRRN;
                     pai->P[1] = ultimoRRN + 1;
                     
                     for(int i=0; i<4; i++){                          
-                        irma->K[i] = no->K[5+i]; //copiando ultimas 5 chaves
+                        irma->K[i] = no->K[5+i]; //copiando ultimas 4 chaves
                     }
-                    no->n -= 4
+
+                    no->n -= 5;
+                    irma->n = 4;
+
                     //liberando espaço para nova chave no no esquerdo
                     shiftright(no, rIndex);
                     insert(no, rIndex, codEscola, RRN);
-
                 }  
                 else{// a chave nova ficara no no da direit
+                    
+                    for(int i=0; i<4; i++){                          
+                        irma->K[i] = no->K[5+i]; //copiando ultimas 4 chaves
+                    }
 
+                    no->n -= 4;
+                    irma->n = 4;
+
+                    if (rIndex == 5){
+                        pai->K[0].C = codEscola;
+                        pai->K[0].PRRN = RRN;
+                        pai->n++;
+                        pai->P[0] = rRRN;
+                        pai->P[1] = ultimoRRN + 1;
+                    }
+                    else{
+                        shiftright(irma, rIndex-5);
+                        insert(irma, rIndex-5, codEscola, RRN);
+                        insert(pai,0,irma->K[0].C,irma->K[0].PRRN);
+                        pai->P[0] = rRRN;
+                        pai->P[1] = ultimoRRN + 1;
+                        
+                        shiftleft(irma);
+                    }
                 }                 
-            }                              
-                                                                                                                                                                                                                                                                                                                                                                   
+            }                                                                                                                                                                                                                                                                                                                                                                                    
         }
         else{
             if(no->K[rIndex].C != 0){
