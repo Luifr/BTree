@@ -3,6 +3,7 @@
 #include <string.h>
 #include <errno.h>
 #include "arqInfo.h"
+#include "btree.h"
 
 
 void leituraArq(char* filename_R, char* filename_W){
@@ -111,7 +112,7 @@ void leituraArq(char* filename_R, char* filename_W){
         if(rest > 0){
             fwrite(zeros, 1, rest, arquivoS);
         }
-
+		// inserir aqui
     }
     free(reg.nomeEscola);
     free(reg.municipio);
@@ -962,7 +963,6 @@ void desfragmentarArq(char* filename){
 void showStack(char* fileName){
     // declaracoes e abrir o arquivo para leitura
     FILE* arquivo = fopen(fileName,"rb");
-    char c;
     int topoPilha;
 
     if (!arquivo){
