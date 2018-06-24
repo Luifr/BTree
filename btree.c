@@ -129,27 +129,114 @@ void insert(node* no, int index, int codEscola, int RRN){
     no->n++;
 }
 
-void doSplit(int i, node* no){
+// index: indice a ser inserido
+// RRN: rrn a ser inserido
+// codEscola: codEscola a ser inserido
+// no: o no para inserir a chave
+// rrnPai: o rrn do pai
+// rRRN: o rrn do no a ser inserido
+// ultimoRRN: o ultimo RRN
+void doSplit(int index, int RRN, int codEscola, node* no, int rrnPai, int rRRN, int ultimoRRN){
+    
+    node *irma, *pai;
+    irma = newNode();
+    
+    if(rrnPai != -1){
+        PageRead( rrnPai , pai );
+    }
+    else{
+        pai = newNode();
+    }
 
+    //decidindo qual chave promover
+    if (index < 5){//a chave nova ficara no no da esquerda        
+        int codEscolaRec = no->K[4].C;
+        int rrnRec = no->K[4].PRRN;
+        int lixo;
+
+        for(int i=0; i<4; i++){                          
+            irma->K[i] = no->K[5+i]; //copiando ultimas 4 chaves
+            // copiar os ponteiros tbm
+        }
+
+        no->n -= 5;
+        irma->n = 4;
+
+        //liberando espaço para nova chave no no esquerdo
+        shiftright(no,index);
+        insert(no, index, codEscola, RRN);
+
+        if(pai->n == 0){
+            insert(pai,0,codEscolaRec,rrnRec);
+            pai->P[0] = rRRN;
+            pai->P[1] = ultimoRRN + 1;
+        }
+        else if(pai->n == 9){
+            // fazer outro split, e fazer busca usando qqr cahve do pai
+            searchBTree(pai->K[0].C,&RRN,&rrnPai,&index,&lixo); // achr o index certo dps da busca
+            doSplit(index,rrnRec,codEscolaRec,pai,rrnPai,RRN,ultimoRRN);
+        }
+        else{
+            for(int i=0;i<pai->n;i++){
+                if(codEscolaRec < pai->K[i].C){
+                    shiftright(pai,i);
+                    insert(pai,i,codEscolaRec,rrnRec);
+                }
+            }
+        }
+
+        insert(pai,0,no->K[4].C,no->K[4].PRRN);
+        pai->P[0] = rRRN;
+        pai->P[1] = ultimoRRN + 1;
+    } 
+
+    else{// a chave nova ficara no no da direit
+        
+        for(int i=0; i<4; i++){                          
+            irma->K[i] = no->K[5+i]; //copiando ultimas 4 chaves
+        }
+
+        no->n -= 4;
+        irma->n = 4;
+
+        if (index == 5){
+            pai->K[0].C = codEscola;
+            pai->K[0].PRRN = RRN;
+            pai->n++;
+            pai->P[0] = rRRN;
+            pai->P[1] = ultimoRRN + 1;
+        }
+        else{
+            shiftright(irma, index-5);
+            insert(irma, index-5, codEscola, RRN);
+            insert(pai,0,irma->K[0].C,irma->K[0].PRRN);
+            pai->P[0] = rRRN;
+            pai->P[1] = ultimoRRN + 1;
+            
+            shiftleft(irma);
+        }
+    } 
 }
 
 void shiftright(node* no, int rIndex){
     int auxN = no->n, i=rIndex, j= no->n;
     if (j == 9) j = 8;
-    while(j != i-1){
-        insert(no, j, no->K[j-i].C, no->K[j-1].PRRN);
+    while(j != i){
+        insert(no, j, no->K[j-1].C, no->K[j-1].PRRN);
+        no->P[j+1] = no->P[j];
         j--;
     }    
     no->n = auxN;
 }
 
 void shiftleft(node* no){
-    int auxN = no->n, i=no->n-1;
+    int auxN = no->n-1, i=1;
     //if (j == 9) j = 8;
-    while(i > 0){
+    while(i < no->n){
         insert(no, i-1 , no->K[i].C, no->K[i].PRRN);
+        no->P[i-1] = no->P[i];
         i--;
-    }    
+    }
     no->n = auxN;
 }
 
@@ -189,44 +276,60 @@ void insertBTree(int codEscola, int RRN){
 
         if(rIndex == 10){
             // split
-            //doSplit(); // argumentos: rrn do no para inserir, rrn do pai; acho q so
-            node* pai, *irma;                                                                                                            
             //Como a ordem eh 10, o split sera de 5 e 5, sendo o primeiro elemento do segundo no
             //o escolhido para promocao, portanto ficaria 5 para o filho esquedo, 4 para o direito e um para o no pai
-            
-            //alocando espaco para o novo no
-            irma = newNode();
-            //devo buscar o pai (supondo que nao estou na raiz)
-            if(noRaiz != rRRN){
-                // fseek(bfile, sizeof(node)*fatherRRN+TamCabB, SEEK_SET);
-                // fread(pai, sizeof(node), 1, bfile);
-                PageRead( noRaiz , no);
-            }
-            else{
-                pai = newNode(); //futura nova raiz, RRN dela sera ultimoRRN + 2
+
+            doSplit(rIndex,RRN, codEscola, no,fatherRRN, rRRN,ultimoRRN);
+            // else{
+            //     pai = newNode(); //futura nova raiz, RRN dela sera ultimoRRN + 2
                 
-                //decidindo qual chave promover
-                if (rIndex <= 5){//a chave nova ficara no no da esquerda
-                    pai->K[0].C = no->K[4].C;
-                    pai->K[0].PRRN = no->K[4].PRRN;
-                    pai->n++;
-                    pai->P[0] = rRRN;
-                    pai->P[1] = ultimoRRN + 1;
+            //     //decidindo qual chave promover
+            //     if (rIndex < 5){//a chave nova ficara no no da esquerda
+            //         insert(pai,0,no->K[4].C,no->K[4].PRRN);
+            //         pai->P[0] = rRRN;
+            //         pai->P[1] = ultimoRRN + 1;
                     
-                    for(int i=0; i<4; i++){                          
-                        irma->K[i] = no->K[5+i]; //copiando ultimas 5 chaves
-                    }
-                    no->n -= 4
-                    //liberando espaço para nova chave no no esquerdo
-                    shiftright(no, rIndex);
-                    insert(no, rIndex, codEscola, RRN);
+            //         for(int i=0; i<4; i++){                          
+            //             irma->K[i] = no->K[5+i]; //copiando ultimas 4 chaves
+            //         }
 
-                }  
-                else{// a chave nova ficara no no da direit
+            //         no->n -= 5;
+            //         irma->n = 4;
 
-                }                 
-            }                              
-                                                                                                                                                                                                                                                                                                                                                                   
+            //         //liberando espaço para nova chave no no esquerdo
+            //         shiftright(no, rIndex);
+            //         insert(no, rIndex, codEscola, RRN);
+            //     }  
+            //     else{// a chave nova ficara no no da direit
+                    
+            //         for(int i=0; i<4; i++){                          
+            //             irma->K[i] = no->K[5+i]; //copiando ultimas 4 chaves
+            //         }
+
+            //         no->n -= 4;
+            //         irma->n = 4;
+
+            //         if (rIndex == 5){
+            //             pai->K[0].C = codEscola;
+            //             pai->K[0].PRRN = RRN;
+            //             pai->n++;
+            //             pai->P[0] = rRRN;
+            //             pai->P[1] = ultimoRRN + 1;
+            //         }
+            //         else{
+            //             shiftright(irma, rIndex-5);
+            //             insert(irma, rIndex-5, codEscola, RRN);
+            //             insert(pai,0,irma->K[0].C,irma->K[0].PRRN);
+            //             pai->P[0] = rRRN;
+            //             pai->P[1] = ultimoRRN + 1;
+                        
+            //             shiftleft(irma);
+            //         }
+            //     }                 
+            // } 
+
+            // escreve os resultados
+
         }
         else{
             if(no->K[rIndex].C != 0){
@@ -237,6 +340,7 @@ void insertBTree(int codEscola, int RRN){
             else{
                 insert(no,rIndex,codEscola,RRN);
             }
+            PageWrite( rRRN , no );
         }
 
     }
@@ -264,6 +368,7 @@ int searchBTree(int codEscola, int* RRN, int* fatherRRN , int* index, int* ad_RR
         fseek(bfile,1,SEEK_SET);
         fread(&noRaiz, sizeof(noRaiz), 1, bfile);//pega as informacoes
         fread(&altura, sizeof(altura), 1, bfile);
+        fclose(bfile);
 
         *RRN = noRaiz; // atualiza o rrn de retorno
         *fatherRRN = -1; // o pai inicialmente e nullo
@@ -275,7 +380,6 @@ int searchBTree(int codEscola, int* RRN, int* fatherRRN , int* index, int* ad_RR
         int i=0;
         if (no->K[i].C == 0){//se a primeira posicao do no for vazia, este no esta vazio. fim da funcao
             *index = 0;
-            fclose(bfile);
             return 0;
         }
         else{
@@ -285,7 +389,6 @@ int searchBTree(int codEscola, int* RRN, int* fatherRRN , int* index, int* ad_RR
                 *index = i;
 
                 if(i != nReg && codEscola == no->K[i].C){ // se o codigoEscola for igual retorna que ja existe
-                    fclose(bfile);
                     *ad_RRN = no->K[i].PRRN;
                     return 1;
                 }
@@ -294,7 +397,6 @@ int searchBTree(int codEscola, int* RRN, int* fatherRRN , int* index, int* ad_RR
                    if(i == nReg){ // se a iteracao acabou, esse no esta cheio. SPLIT
                        *index = 10;
                     }
-                    fclose(bfile);
                     return 0;
                 }
                 //existindo um nivel inferior, desce na arvore

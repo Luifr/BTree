@@ -639,6 +639,28 @@ tRegistro* searchRRN(char* fileName, char* charRRN){
 	fclose(file);
 	return reg;
 }
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+tRegistro* searchRRNint(char* fileName, int RRN ){
+	tRegistro* reg = NULL;
+
+	FILE* file = fopen(fileName, "rb+");
+
+	//Verifica erro
+	if(file == NULL){
+		reg = (void*)1;
+		return reg;
+	}
+
+	//pulando registro de cabecalho:
+	fseek(file, TamCab, SEEK_SET);
+
+	reg = searching(file, RRN);
+
+	fclose(file);
+	return reg;
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
