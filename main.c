@@ -224,7 +224,30 @@ int main(int argc, char* argv[]){
         int RRN,index,father,codEscola,ad_rrn,ret;
         sscanf(argv[2],"%d",&codEscola);
         if((ret = searchBTree(codEscola,&RRN,&father,&index,&ad_rrn)) == 1){
-            // se argv2 != de argv3 : remover e inserir
+            if (argv[2] != argv[3]){
+                //atualizando no arquivo de dados
+                tRegistro reg;
+                reg.nomeEscola = malloc(128);
+                reg.municipio = malloc(128);
+                reg.endereco = malloc(128);
+
+                sscanf(argv[3],"%d",&reg.codEscola); // prepara o registrador que sera usado na insercao
+                strcpy(reg.dataInicio , argv[4]);
+                strcpy(reg.dataFinal , argv[5]);
+                strcpy(reg.nomeEscola , argv[6]);
+                strcpy(reg.municipio , argv[7]);
+                strcpy(reg.endereco , argv[8]);
+
+                atualizaReg(arq_saida, ad_rrn, reg);
+                //atualizando a Btree
+                removeBTree(codEscola);
+                insertBTree(codEscola, ad_rrn);
+
+                free(reg.nomeEscola);
+                free(reg.municipio);
+                free(reg.endereco);
+                printf("Registro alterado com sucesso.");
+            }
         }
         else if(ret == -1){
             printf("Falha no processamento do arquivo.\n");
