@@ -221,7 +221,17 @@ int main(int argc, char* argv[]){
             printf("Faltam argumentos");
             return 1;
         }
-
+        int RRN,index,father,codEscola,ad_rrn,ret;
+        sscanf(argv[2],"%d",&codEscola);
+        if((ret = searchBTree(codEscola,&RRN,&father,&index,&ad_rrn)) == 1){
+            // se argv2 != de argv3 : remover e inserir
+        }
+        else if(ret == -1){
+            printf("Falha no processamento do arquivo.\n");
+        }
+        else{
+            printf("Registro inexistente.\n");
+        }
     }
 
     return 0;
