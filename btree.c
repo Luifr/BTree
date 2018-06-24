@@ -129,7 +129,14 @@ void insert(node* no, int index, int codEscola, int RRN){
     no->n++;
 }
 
-void doSplit(int index, int RRN, int codEscola, node* no, int rrnPai, int rRRN,int ultimoRRN){
+// index: indice a ser inserido
+// RRN: rrn a ser inserido
+// codEscola: codEscola a ser inserido
+// no: o no para inserir a chave
+// rrnPai: o rrn do pai
+// rRRN: o rrn do no a ser inserido
+// ultimoRRN: o ultimo RRN
+void doSplit(int index, int RRN, int codEscola, node* no, int rrnPai, int rRRN, int ultimoRRN){
     
     node *irma, *pai;
     irma = newNode();
@@ -158,7 +165,7 @@ void doSplit(int index, int RRN, int codEscola, node* no, int rrnPai, int rRRN,i
         //liberando espaço para nova chave no no esquerdo
         shiftright(no,index);
         insert(no, index, codEscola, RRN);
-        //searchBTree(codEscolaRec,&RRN,&rrnPai,&index,&lixo);
+
         if(pai->n == 0){
             insert(pai,0,codEscolaRec,rrnRec);
             pai->P[0] = rRRN;
@@ -166,6 +173,8 @@ void doSplit(int index, int RRN, int codEscola, node* no, int rrnPai, int rRRN,i
         }
         else if(pai->n == 9){
             // fazer outro split, e fazer busca usando qqr cahve do pai
+            searchBTree(pai->K[0].C,&RRN,&rrnPai,&index,&lixo); // achr o index certo dps da busca
+            doSplit(index,rrnRec,codEscolaRec,pai,rrnPai,RRN,ultimoRRN);
         }
         else{
             for(int i=0;i<pai->n;i++){
@@ -331,6 +340,7 @@ void insertBTree(int codEscola, int RRN){
             else{
                 insert(no,rIndex,codEscola,RRN);
             }
+            PageWrite( rRRN , no );
         }
 
     }
@@ -358,6 +368,7 @@ int searchBTree(int codEscola, int* RRN, int* fatherRRN , int* index, int* ad_RR
         fseek(bfile,1,SEEK_SET);
         fread(&noRaiz, sizeof(noRaiz), 1, bfile);//pega as informacoes
         fread(&altura, sizeof(altura), 1, bfile);
+        fclose(bfile);
 
         *RRN = noRaiz; // atualiza o rrn de retorno
         *fatherRRN = -1; // o pai inicialmente e nullo
@@ -369,7 +380,6 @@ int searchBTree(int codEscola, int* RRN, int* fatherRRN , int* index, int* ad_RR
         int i=0;
         if (no->K[i].C == 0){//se a primeira posicao do no for vazia, este no esta vazio. fim da funcao
             *index = 0;
-            fclose(bfile);
             return 0;
         }
         else{
@@ -379,7 +389,6 @@ int searchBTree(int codEscola, int* RRN, int* fatherRRN , int* index, int* ad_RR
                 *index = i;
 
                 if(i != nReg && codEscola == no->K[i].C){ // se o codigoEscola for igual retorna que ja existe
-                    fclose(bfile);
                     *ad_RRN = no->K[i].PRRN;
                     return 1;
                 }
@@ -388,7 +397,6 @@ int searchBTree(int codEscola, int* RRN, int* fatherRRN , int* index, int* ad_RR
                    if(i == nReg){ // se a iteracao acabou, esse no esta cheio. SPLIT
                        *index = 10;
                     }
-                    fclose(bfile);
                     return 0;
                 }
                 //existindo um nivel inferior, desce na arvore

@@ -185,9 +185,9 @@ int main(int argc, char* argv[]){
         }
         int RRN,index,father,codEscola,ad_rrn;
         sscanf(argv[2],"%d",&codEscola);
-        if(searchBTree(codEscola,&RRN,&father,&index,&ad_rrn) == 1){
+        if((ret = searchBTree(codEscola,&RRN,&father,&index,&ad_rrn)) == 1){
             //buscando
-            tRegistro* reg = searchRRN(arq_saida, (char*)&ad_rrn);
+            tRegistro* reg = searchRRNint(arq_saida, ad_rrn);
 
             if(reg == NULL)  printf("Registro inexistente.\n");
             else if(reg == (void*)1){
@@ -197,6 +197,9 @@ int main(int argc, char* argv[]){
                 printf("%d %.10s %.10s %d %s %d %s %d %s\n", reg->codEscola, reg->dataInicio, reg->dataFinal, (int)strlen(reg->nomeEscola), reg->nomeEscola, (int)strlen(reg->municipio), reg->municipio, (int)strlen(reg->endereco), reg->endereco );
 
             }
+        }
+        else if(ret == -1){
+            printf("Falha no processamento do arquivo.\n");
         }
         else{
             printf("Registro inexistente.\n");
