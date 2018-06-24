@@ -372,7 +372,7 @@ void insertBTree(int codEscola, int RRN){
             //Como a ordem eh 10, o split sera de 5 e 5, sendo o primeiro elemento do segundo no
             //o escolhido para promocao, portanto ficaria 5 para o filho esquedo, 4 para o direito e um para o no pai
 
-            doSplit(rIndex,RRN, codEscola, no,fatherRRN, rRRN,&ultimoRRN);
+            doSplit(rIndex,RRN, codEscola, no,fatherRRN, rRRN,&ultimoRRN); 
             fseek(bfile,13,SEEK_SET);
             // precisa atualizar o no raiz e altura
             fwrite(&ultimoRRN,sizeof(ultimoRRN),1,bfile);
