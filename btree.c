@@ -136,7 +136,7 @@ void insert(node* no, int index, int codEscola, int RRN){
 // rrnPai: o rrn do pai
 // rRRN: o rrn do no a ser inserido
 // ultimoRRN: o ultimo RRN
-void doSplit(int index, int RRN, int codEscola, node* no, int rrnPai, int rRRN, int *ultimoRRN){
+void doSplit(int index, int RRN, int codEscola, node* no, int rrnPai, int rRRN, int *ultimoRRN, int RRNSobrinha){
     
     int lixo;
     int RRNIrma = ++(*ultimoRRN) ;
@@ -197,7 +197,8 @@ void doSplit(int index, int RRN, int codEscola, node* no, int rrnPai, int rRRN, 
                     break;
                 }
             }
-            doSplit(index,rrnRec,codEscolaRec,pai,rrnPai,RRN,ultimoRRN);
+            RRNSobrinha = RRNIrma;
+            doSplit(index,rrnRec,codEscolaRec,pai,rrnPai,RRN,ultimoRRN, RRNSobrinha);
         }
         else{
             for(int i=0;i<pai->n;i++){
@@ -224,7 +225,7 @@ void doSplit(int index, int RRN, int codEscola, node* no, int rrnPai, int rRRN, 
 
         if (index == 5){ // a nova chave e promovida
 
-            irma->P[0] = RRNIrma;
+            irma->P[0] = RRNSobrinha;
             for(int i=1; i<4; i++){                          
                 irma->P[i] = no->P[5+i]; //copiando ultimos 3 ponteiros
             } 
@@ -248,7 +249,8 @@ void doSplit(int index, int RRN, int codEscola, node* no, int rrnPai, int rRRN, 
                         break;
                     }
                 }
-                doSplit(index,RRN,codEscola,pai,rrnPai,aux,ultimoRRN);
+                RRNSobrinha = RRNIrma;
+                doSplit(index,RRN,codEscola,pai,rrnPai,aux,ultimoRRN, RRNSobrinha);
             }
             else{
                 for(int i=0;i<pai->n;i++){
@@ -261,17 +263,18 @@ void doSplit(int index, int RRN, int codEscola, node* no, int rrnPai, int rRRN, 
                     }
                 }
             }
-
-            // pai->K[0].C = codEscola;
-            // pai->K[0].PRRN = RRN;
-            // pai->n++;
-            // pai->P[0] = rRRN;
-            // pai->P[1] = ultimoRRN + 1;
-
         }
 
         else{ // a nova chave n e promovida
-            // aqui tbm tem copia de ponteiro?
+            
+            irma->P[0] = no->P[6];
+            for(int i=1, j=1; i<5; i++, j++){
+                if (index == 5+i){
+                    irma->P[i] = RRNSobrinha;
+                    i++;
+                }
+                irma->P[i] = no->P[5+j];
+            }
             shiftright(irma, index-5);
 
             // escreve em disco as alteraçoes dos nos
@@ -292,7 +295,8 @@ void doSplit(int index, int RRN, int codEscola, node* no, int rrnPai, int rRRN, 
                         break;
                     }
                 }
-                doSplit(index,irma->K[0].PRRN,irma->K[0].C,pai,rrnPai,RRN,ultimoRRN);
+                RRNSobrinha = RRNIrma;
+                doSplit(index,irma->K[0].PRRN,irma->K[0].C,pai,rrnPai,RRN,ultimoRRN, RRNSobrinha);
             }
             else{
                 for(int i=0;i<pai->n;i++){
@@ -336,7 +340,7 @@ void shiftleft(node* no){
 void insertBTree(int codEscola, int RRN){
     //Ordem 10, ou seja 9 chaves e 10 ponteiros
     char status = 0;
-    int noRaiz = 0, altura = 0, ultimoRRN = 0,  fatherRRN, ad_rrn;
+    int noRaiz = 0, altura = 0, ultimoRRN = 0, RRNSobrinha = -1,  fatherRRN, ad_rrn;
     FILE* bfile;
     node* no;
     int rRRN,rIndex,ret = searchBTree(codEscola,&rRRN,&fatherRRN,&rIndex,&ad_rrn);
@@ -372,7 +376,7 @@ void insertBTree(int codEscola, int RRN){
             //Como a ordem eh 10, o split sera de 5 e 5, sendo o primeiro elemento do segundo no
             //o escolhido para promocao, portanto ficaria 5 para o filho esquedo, 4 para o direito e um para o no pai
 
-            doSplit(rIndex,RRN, codEscola, no,fatherRRN, rRRN,&ultimoRRN); 
+            doSplit(rIndex,RRN, codEscola, no,fatherRRN, rRRN,&ultimoRRN, RRNSobrinha);
             fseek(bfile,13,SEEK_SET);
             // precisa atualizar o no raiz e altura
             fwrite(&ultimoRRN,sizeof(ultimoRRN),1,bfile);
@@ -635,12 +639,13 @@ void removeKeyFromLeaf(int RRN, node* this, int fatherRRN, node* father, int ind
     //variaveis uteis para redistribuicao:
     int toTransfer;
 
+    leftBrother =  (node*) malloc(sizeof(node));
+    rightBrother = (node*) malloc(sizeof(node));
+
     //REMOVENDO ...........
-    //deixo todas as chaves que sobraram o mais a esquerda possivel 
-    //(isso ja apaga a chave com o codigo de escola que se quer remover):
     removeByShifting(this, index);
-    PageWrite(RRN, this);
-    removeByShifting(this, index);
+
+
     //verifico quantas chaves tem nesse node para saber se a remocao o desbalanceou:
     // uma folha deve ter no minimo (m/2)-1 e no maximo (m-1) cahves
     
@@ -713,17 +718,12 @@ void removeKeyFromLeaf(int RRN, node* this, int fatherRRN, node* father, int ind
                 //preciso redefinir 'this' para ele virar seu pai: (como nao quero remover nada do pai, o ultimo argumento e inutil)
                 searchBTree( (father->K[0]).C, &RRN, &fatherRRN, &lixo, &lixo);
 
-                free(this);   // limpo este espaco de memoria, ppis os ponteiros serao redefinidos
-                free(father); // limpo este espaço de memoria
-                //lembrando que as modificacoes de father e this já foram sa
-
+                //lembrando que as modificacoes de father e this já foram salvas no arquivo
+                
                 PageRead(RRN, this);           //agora 'this' passa a ser seu pai ...
                 PageRead(fatherRRN, father);   //... e father passa a ser o avo do que era 'this' (pai do pai)
             }
             //else --> pai ta certinho  
-
-            free(rightBrother);
-            free(leftBrother); 
         }
             
     }
@@ -731,22 +731,97 @@ void removeKeyFromLeaf(int RRN, node* this, int fatherRRN, node* father, int ind
 
     free(father);
     free(this);
-
+    free(rightBrother);
+    free(leftBrother); 
 }
 
 //----------------------------------------------------------------------------------------------------------------------------------------------------------
-void removeKeyFromNOTLeaf(node* this, int index){
+void removeKeyFromNOTLeaf(int originalRRN, node* this, int index){
+    node* original = this;
     char found = 0;
+    int RRN, fatherRRN;
+    node* father;
+    tKey aux;
 
-    //achando a chave mais a esquerda do filho a esquerda (definicao meio ruim mais e isso...)
 
-    //tento ver se ele tem filho a direita
-    if(this->P[])
-    //senao vou pelo filho da esquerda
+    //achando a chave mais a esquerda do filho mais a esquerda do node a direita de this ______________
+    if(this->P[index+1] != -1) {
 
-    while(found == 0){
+        //vou para o filho a direita de this:
+        father = this;
+        PageRead(this->P[index+1], this);
         
+        RRN = father->P[index+1];
+        fatherRRN = originalRRN;
+
+        //se este novo 'this' ja for uma folha, paro por aqui 
+        if(leafOrNot(this) == 2 ) {
+            found = 1;
+            index = index+1;
+        }
+        //se nao, desco para esquerda ate chegar no nó folha:
+        else {
+            while(found == 0){
+                father = this; 
+                PageRead(this->P[0], this);
+
+                fatherRRN = RRN; 
+                RRN = father->P[0];
+
+                //se cheguei em um node folha, cheguei onde eu queria:
+                if(leafOrNot(this) == 2) found = 1;
+            }
+            // index agora servira para chamar a funcao de remocao em folha e precisa indicar onde de 'this' esta a chave trocada, no caso, 0
+            index =  0;
+        }
+        //quando achar, troco as chaves:
+        aux = this->K[0];
+        this->K[0] = original->K[index];
+        original->K[index] = aux;
     }
+    
+    //achando a chave mais a direita do filho mais a direita do node a esquerda de this: ______________
+    else if(this->P[index] != -1){
+        //vou para o filho a esquerda de this:
+        father = this;
+        PageRead(this->P[index], this);
+
+        RRN = father->P[index];
+        fatherRRN = originalRRN;
+
+        //se este novo 'this' ja for uma folha, paro por aqui 
+        if(leafOrNot(this) == 2) {
+            found = 1;
+            //index = index
+        }
+         //se nao, desco para direita ate chegar no nó folha
+        else{
+            while(found == 0){
+                father = this; 
+                PageRead(this->P[this->n-1], this);
+
+                fatherRRN = RRN; 
+                RRN = father->P[this->n-1];
+                
+                //se cheguei em um node folha, cheguei onde eu queria:
+                if(leafOrNot(this) == 2) found = 1;
+            }
+            //index agora servira para chamar a funcao de remocao em follha e precisa indicar onde de 'this' esta a chave trocada, no caso, this->n -1
+            index =  this->n-1;
+        }
+        //quando achar, troco as chaves:
+        aux = this->K[this->n-1];
+        this->K[this->n-1] = original->K[index];
+        original->K[index] = aux;
+
+    }
+
+    //salvo as modificacoes no arquivo:
+    PageWrite(originalRRN, original);
+    PageWrite(RRN, this);
+
+    //agora que a troca foi efetua, removo a chave desejada a partir da folha em que agora ela esta inserida;
+    removeKeyFromLeaf(RRN, this, fatherRRN, father, index);
 }
 
 //----------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -755,7 +830,7 @@ void removeKeyFromNOTLeaf(node* this, int index){
    1: node nao folha
    2: node folha
 */
-char rootLeafOrInBetween(node* this, node* father){
+char leafOrNot(node* this){
     int i;
     if(this == NULL) return -1;   //se 'this' e um ponteiro nulo, bom, ele n existe
 
@@ -782,19 +857,22 @@ int removeBTree(int codEscola){
     int lixo;
 
     //buscar código da escola desejado e se o codigo da escola nao existir na arvore, este registro nao pode ser removido
-     if (searchBTree(codEscola, &RRN, &fatherRRN, &index, &lixo) != 1) return -1;
+    if (searchBTree(codEscola, &RRN, &fatherRRN, &index, &lixo) != 1) return -1;
+
+    pageWithKey = (node*) malloc(sizeof(node));
+    father = (node*) malloc(sizeof(node));
 
     //leio as informaçoes deste RRN em 'pageWithKey'... autoexplicativo nao e mesmo !?  Depois faco isso com o pai;D
-    if (RRN != -1)  PageRead(pageWithKey,  RRN);
+    if (RRN != -1)  PageRead( RRN, pageWithKey);
     else  pageWithKey = NULL;
-    if (fatherRRN != -1) PageRead(father, fatherRRN);
+    if (fatherRRN != -1) PageRead(fatherRRN, father);
     else father = NULL;
 
     //agora verifico se estou lidando com uma folha, raiz, ou !essas_coisas:
-    type = rootLeafOrInBetween(pageWithKey, father);
+    type = leafOrNot(pageWithKey);
 
     switch((int)type){
-        case 1: removeKeyFromNOTLeaf(pageWithKey, index);   break;
+        case 1: removeKeyFromNOTLeaf(RRN, pageWithKey, index);   break;
         case 2: removeKeyFromLeaf(RRN, pageWithKey, fatherRRN, father, index);   break;
         default: break;
     }

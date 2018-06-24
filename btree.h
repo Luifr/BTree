@@ -29,7 +29,7 @@ int bleast;
 void BufferInit();
 void BufferEnd();
 
-void doSplit(int index, int RRN, int codEscola, node* no, int rrnPai, int rRRN, int* ultimoRRN);
+void doSplit(int index, int RRN, int codEscola, node* no, int rrnPai, int rRRN, int* ultimoRRN, int* RRNSobrinha);
 
 void shiftright(node* no, int rIndex);
 
@@ -43,6 +43,6 @@ void insertBTree(int codEscola, int RRN);
 // 1: achou  
 int searchBTree(int codEscola, int* RRN, int* fatherRRN , int* index, int* ad_RRN);
 
-void deleteBTree();
+int removeBTree(int codEscola);
 
 #endif
