@@ -29,15 +29,19 @@ int bleast;
 void BufferInit();
 void BufferEnd();
 
+void doSplit(int index, int RRN, int codEscola, node* no, int rrnPai, int rRRN, int* ultimoRRN);
 
+void shiftright(node* no, int rIndex);
 
-void insertBTree();
+void shiftleft(node* no);
+
+void insertBTree(int codEscola, int RRN);
 
 // Retorno;
 // -1: arquivo nao existe
 // 0: nao achou
 // 1: achou  
-int searchBTree(int codEscola, int* RRN, int* fatherRRN ,int* index, int* ad_RRN);
+int searchBTree(int codEscola, int* RRN, int* fatherRRN , int* index, int* ad_RRN);
 
 void deleteBTree();
 

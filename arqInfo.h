@@ -54,7 +54,7 @@ tRegistro** search(char* fileName, char* fieldName, char* value, int* array_size
 		->ponteiro para o registro ou null, caso conteudo do RRN tenha sido removido
  */
 tRegistro* searchRRN(char* fileName, char* charRRN);
-tRegistro* searchRRN(char* fileName, int RRN);
+tRegistro* searchRRNint(char* fileName, int RRN);
 
 /*Funcao 5 - Remocao logica de um registro a partir do RRN
 */
