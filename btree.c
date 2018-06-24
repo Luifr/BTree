@@ -138,6 +138,7 @@ void insert(node* no, int index, int codEscola, int RRN){
 // ultimoRRN: o ultimo RRN
 void doSplit(int index, int RRN, int codEscola, node* no, int rrnPai, int rRRN, int *ultimoRRN){
     
+    int lixo;
     int RRNIrma = ++(*ultimoRRN) ;
     
     node *irma, *pai;
@@ -165,7 +166,6 @@ void doSplit(int index, int RRN, int codEscola, node* no, int rrnPai, int rRRN, 
     if (index < 5){//a chave nova ficara no no da esquerda        
         int codEscolaRec = no->K[4].C;
         int rrnRec = no->K[4].PRRN;
-        int lixo;
 
         for(int i=0; i<4; i++){                          
             irma->K[i] = no->K[5+i]; //copiando ultimas 4 chaves
@@ -213,37 +213,99 @@ void doSplit(int index, int RRN, int codEscola, node* no, int rrnPai, int rRRN, 
 
     } 
 
-    else{// a chave nova ficara no no da direit
+    else{// a chave nova ficara no no da direita
         
         for(int i=0; i<4; i++){                          
             irma->K[i] = no->K[5+i]; //copiando ultimas 4 chaves
-
         }
 
         no->n -= 4;
         irma->n = 4;
 
         if (index == 5){ // a nova chave e promovida
+
             irma->P[0] = RRNIrma;
             for(int i=1; i<4; i++){                          
-            irma->K[i] = no->K[5+i]; //copiando ultimas 3 chaves
-            }
+                irma->P[i] = no->P[5+i]; //copiando ultimos 3 ponteiros
+            } 
             
-            pai->K[0].C = codEscola;
-            pai->K[0].PRRN = RRN;
-            pai->n++;
-            pai->P[0] = rRRN;
-            pai->P[1] = ultimoRRN + 1;
+            // escreve em disco as alteraçoes dos nos
+            PageWrite(rRRN, no);
+            PageWrite(RRNIrma, irma);
+
+            if(pai->n == 0){
+                insert(pai,0,codEscola,RRN);
+                pai->P[0] = rRRN;
+                pai->P[1] = RRNIrma;
+            }
+            else if(pai->n == 9){
+                int aux;
+                // fazer outro split, e fazer busca usando qqr cahve do pai
+                searchBTree(pai->K[0].C,&aux,&rrnPai,&index,&lixo); // achr o index certo dps da busca
+                for (int i = 0; i<9; i++){
+                    if ( codEscola < pai->K[i].C){
+                        index = i;
+                        break;
+                    }
+                }
+                doSplit(index,RRN,codEscola,pai,rrnPai,aux,ultimoRRN);
+            }
+            else{
+                for(int i=0;i<pai->n;i++){
+                    if(codEscola < pai->K[i].C){
+                        shiftright(pai,i);
+                        insert(pai,i,codEscola,RRN);
+                        // setar os ponteiros do pai pros filhos
+                        pai->P[i+1] = RRNIrma;
+                        break;
+                    }
+                }
+            }
+
+            // pai->K[0].C = codEscola;
+            // pai->K[0].PRRN = RRN;
+            // pai->n++;
+            // pai->P[0] = rRRN;
+            // pai->P[1] = ultimoRRN + 1;
 
         }
-        else{ // a nova chave n e promovida
 
+        else{ // a nova chave n e promovida
+            // aqui tbm tem copia de ponteiro?
             shiftright(irma, index-5);
-            insert(irma, index-5, codEscola, RRN);
-            insert(pai,0,irma->K[0].C,irma->K[0].PRRN);
-            pai->P[0] = rRRN;
-            pai->P[1] = ultimoRRN + 1;
-            
+
+            // escreve em disco as alteraçoes dos nos
+            PageWrite(rRRN, no);
+            PageWrite(RRNIrma, irma);
+
+            if(pai->n == 0){
+                insert(pai,0,irma->K[0].C,irma->K[0].PRRN);
+                pai->P[0] = rRRN;
+                pai->P[1] = RRNIrma;
+            }
+            else if(pai->n == 9){
+                // fazer outro split, e fazer busca usando qqr cahve do pai
+                searchBTree(pai->K[0].C,&RRN,&rrnPai,&index,&lixo); // achr o index certo dps da busca
+                for (int i = 0; i<9; i++){
+                    if ( irma->K[0].C < pai->K[i].C){
+                        index = i;
+                        break;
+                    }
+                }
+                doSplit(index,irma->K[0].PRRN,irma->K[0].C,pai,rrnPai,RRN,ultimoRRN);
+            }
+            else{
+                for(int i=0;i<pai->n;i++){
+                    if(irma->K[0].C < pai->K[i].C){
+                        shiftright(pai,i);
+                        insert(pai,i,irma->K[0].C,irma->K[0].PRRN);
+                        // setar os ponteiros do pai pros filhos
+                        pai->P[i+1] = RRNIrma;
+                        break;
+                    }
+                }
+            }
+
             shiftleft(irma);
         }
     } 
