@@ -11,6 +11,7 @@ int bfill = 0;
 void BufferInit() {
 	buffer = malloc(sizeof(struct BUFFER) * 4);
 	root = malloc(sizeof(struct BUFFER));
+    root->n_page = 0;
 }
 
 //Essa função grava source no arquivo arq
@@ -107,7 +108,7 @@ void PageWrite(int page, node* source) {
 	memcpy(&buffer[bleast].page, source, sizeof(node));
 }
 
-void BufferEnd(FILE* arq) {
+void BufferEnd() {
 	while (bfill--)
 		bsave(buffer + bfill);
 
@@ -141,14 +142,13 @@ void doSplit(int index, int RRN, int codEscola, node* no, int rrnPai, int rRRN, 
     int lixo;
     int RRNIrma = ++(*ultimoRRN) ;
     
-    node *irma, *pai;
+    node *irma, *pai = newNode();
     irma = newNode();
     
     if(rrnPai != -1){
         PageRead( rrnPai , pai );
     }
     else{
-        pai = newNode();
         //Aumentar RRN
         (*ultimoRRN)++;
         int altura;
@@ -342,7 +342,7 @@ void insertBTree(int codEscola, int RRN){
     char status = 0;
     int noRaiz = 0, altura = 0, ultimoRRN = 0, RRNSobrinha = -1,  fatherRRN, ad_rrn;
     FILE* bfile;
-    node* no;
+    node* no = newNode();
     int rRRN,rIndex,ret = searchBTree(codEscola,&rRRN,&fatherRRN,&rIndex,&ad_rrn);
 
     if(ret == -1){ // O arquivo ainda nao foi criado, vamos cria-lo!
@@ -353,10 +353,8 @@ void insertBTree(int codEscola, int RRN){
         fwrite(&altura, sizeof(altura), 1, bfile);
         fwrite(&ultimoRRN, sizeof(ultimoRRN), 1, bfile);
 
-        no = newNode(); // cria o primeiro no
         insert(no,0,codEscola,RRN); // insere no nó
         PageWrite( 0 , no); // escreve o primeiro no
-        root->n_page = 0; // inicializando a raiz do buffer pool
         memcpy(&root->page,no,TamRegB);
     }
     else{//existindo o arquivo, preciso inserir o novo registro na posicao apropriada
@@ -408,7 +406,7 @@ void insertBTree(int codEscola, int RRN){
 int searchBTree(int codEscola, int* RRN, int* fatherRRN , int* index, int* ad_RRN){
     //deve retornar o rrn na arvore
     int noRaiz = 0,altura = 0;
-    node* no;
+    node* no = newNode();
     FILE* bfile = fopen(filename,"rb+");
 
     if(bfile == NULL){ // se for nulo o arquivo n existe
@@ -486,7 +484,7 @@ int rootRRN(){
 void redefineRootRRN(int newRRN){
     FILE* file = fopen(filename, "rb+");
     fwrite(&newRRN, 4, 1, file);
-    flcose(file);
+    fclose(file);
 }
 
 //----------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -736,6 +734,24 @@ void removeKeyFromLeaf(int RRN, node* this, int fatherRRN, node* father, int ind
 }
 
 //----------------------------------------------------------------------------------------------------------------------------------------------------------
+/* RETORNOS A RESPEITO DO NODE 'this':
+  -1: erro
+   1: node nao folha
+   2: node folha
+*/
+char leafOrNot(node* this){
+    int i;
+    if(this == NULL) return -1;   //se 'this' e um ponteiro nulo, bom, ele n existe
+
+    for(i = 0; i < nPointer; i++){
+        if(this->P[i] != -1) return 1; //como 'this' tem pai e filhos, ele e  !(node folha)
+    }
+
+    return 2; //bom, restou ser folha ne....
+
+}
+
+//----------------------------------------------------------------------------------------------------------------------------------------------------------
 void removeKeyFromNOTLeaf(int originalRRN, node* this, int index){
     node* original = this;
     char found = 0;
@@ -824,23 +840,6 @@ void removeKeyFromNOTLeaf(int originalRRN, node* this, int index){
     removeKeyFromLeaf(RRN, this, fatherRRN, father, index);
 }
 
-//----------------------------------------------------------------------------------------------------------------------------------------------------------
-/* RETORNOS A RESPEITO DO NODE 'this':
-  -1: erro
-   1: node nao folha
-   2: node folha
-*/
-char leafOrNot(node* this){
-    int i;
-    if(this == NULL) return -1;   //se 'this' e um ponteiro nulo, bom, ele n existe
-
-    for(i = 0; i < nPointer; i++){
-        if(this->P[i] != -1) return 1; //como 'this' tem pai e filhos, ele e  !(node folha)
-    }
-
-    return 2; //bom, restou ser folha ne....
-
-}
 
 //----------------------------------------------------------------------------------------------------------------------------------------------------------
  /* RETORNOS
@@ -876,5 +875,6 @@ int removeBTree(int codEscola){
         case 2: removeKeyFromLeaf(RRN, pageWithKey, fatherRRN, father, index);   break;
         default: break;
     }
-
+    
+    return 0;
 }

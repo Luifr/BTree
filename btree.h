@@ -29,7 +29,7 @@ int bleast;
 void BufferInit();
 void BufferEnd();
 
-void doSplit(int index, int RRN, int codEscola, node* no, int rrnPai, int rRRN, int* ultimoRRN, int* RRNSobrinha);
+void doSplit(int index, int RRN, int codEscola, node* no, int rrnPai, int rRRN, int* ultimoRRN, int RRNSobrinha);
 
 void shiftright(node* no, int rIndex);
 

@@ -13,7 +13,7 @@ void leituraArq(char* filename_R, char* filename_W){
     FILE *arquivoE;
     FILE *arquivoS;
     int st_tam, nd_tam, rd_tam; //indicadores de tamanho.
-    int n, rest, topoPilha;
+    int n, rest, topoPilha,rrn=0;
     char catcher, status, zeros[112];
 
     //Abrindo o arquivo de entrada
@@ -85,6 +85,8 @@ void leituraArq(char* filename_R, char* filename_W){
         }
         fgetc(arquivoE);
 
+		insertBTree(reg.codEscola,rrn);
+
         //Escrevendo no arquivo de dados de entrada
         //Campos fixos.
         fwrite(&reg.codEscola, sizeof(reg.codEscola), 1 ,arquivoS);
@@ -111,9 +113,10 @@ void leituraArq(char* filename_R, char* filename_W){
         rest = TamReg - (36 + st_tam + nd_tam + rd_tam);
         if(rest > 0){
             fwrite(zeros, 1, rest, arquivoS);
-        }
+		}
 		// inserir aqui
-    }
+		rrn++;
+	}
     free(reg.nomeEscola);
     free(reg.municipio);
     free(reg.endereco);
@@ -768,6 +771,7 @@ void addReg(char* filename,tRegistro reg){
 
     int sm = strlen(reg.municipio), sn = strlen(reg.nomeEscola), se = strlen(reg.endereco); // o tamanho de cada campo variavel
 
+	insertBTree(reg.codEscola,( (ftell(arquivo)-TamCab)/TamReg  ));
     // imprime os campos do novo registro no arquivo
     // tamanho fixo
     fwrite(&reg.codEscola,sizeof(reg.codEscola),1,arquivo);
@@ -807,6 +811,7 @@ void addReg(char* filename,tRegistro reg){
     if(rest > 0){
         fwrite(zeros, 1, rest, arquivo);
     }
+
 
     // atualiza o status
     status = '1';

@@ -31,9 +31,9 @@ int main(int argc, char* argv[]){
         printf("Funcao nao existe\n");
         return 1;
     }
-
+    BufferInit();
     //--------------------------------------------------------------------------------
-    if(func == 1){ // le o arquivo CSV e salva no arquivo de saida
+    if(func == 1 || func == 10){ // le o arquivo CSV e salva no arquivo de saida
         if(argc < 3){
             printf("Faltam argumentos");
             return 1;
@@ -100,7 +100,7 @@ int main(int argc, char* argv[]){
     }
 
     //--------------------------------------------------------------------------------
-    else if(func == 6){ // Insere um novo resgistro
+    else if(func == 6 || func == 11){ // Insere um novo resgistro
         if(argc < 7){
             printf("Faltam argumentos");
             return 1;
@@ -168,16 +168,6 @@ int main(int argc, char* argv[]){
     }
 
     //---------------------------------------------------------------------------------
-    else if(func == 10){ // Inicializa a arvore
-    
-    }
-
-    //---------------------------------------------------------------------------------
-    else if(func == 11){ // Insere um registro
-
-    }
-
-    //---------------------------------------------------------------------------------
     else if(func == 12){ // Busca por um registro
         if(argc < 3){
             printf("Faltam argumentos");
@@ -208,11 +198,23 @@ int main(int argc, char* argv[]){
 
     //---------------------------------------------------------------------------------
     else if(func == 13){ // Remocao de um registro
+        int codEscola;
         if(argc < 3){
             printf("Faltam argumentos");
             return 1;
         }
+        int lixo,ad_rrn;
+        sscanf(argv[2],"%d", &codEscola);
 
+        if(searchBTree(codEscola,&lixo,&lixo,&lixo,&ad_rrn) == -1){
+            printf("Falaha no processamento do arquivo.\n");
+        }else{
+            if (removeBTree(codEscola) == 0){
+                removeReg(arq_saida, ad_rrn);
+                printf("Registro removido com sucesso.\n");
+            }
+            else printf("Registro inexistente\n");
+        }
     }
 
     //---------------------------------------------------------------------------------
@@ -241,7 +243,7 @@ int main(int argc, char* argv[]){
                 atualizaReg(arq_saida, ad_rrn, reg);
                 //atualizando a Btree
                 removeBTree(codEscola);
-                insertBTree(codEscola, ad_rrn);
+                insertBTree(reg.codEscola, ad_rrn);
 
                 free(reg.nomeEscola);
                 free(reg.municipio);
