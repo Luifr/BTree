@@ -11,7 +11,6 @@ int bfill = 0;
 void BufferInit() {
 	buffer = malloc(sizeof(struct BUFFER) * 4);
 	root = malloc(sizeof(struct BUFFER));
-    root->n_page = 0;
 }
 
 //Essa função grava source no arquivo arq
@@ -108,7 +107,7 @@ void PageWrite(int page, node* source) {
 	memcpy(&buffer[bleast].page, source, sizeof(node));
 }
 
-void BufferEnd() {
+void BufferEnd(FILE* arq) {
 	while (bfill--)
 		bsave(buffer + bfill);
 
@@ -142,13 +141,14 @@ void doSplit(int index, int RRN, int codEscola, node* no, int rrnPai, int rRRN, 
     int lixo;
     int RRNIrma = ++(*ultimoRRN) ;
     
-    node *irma, *pai = newNode();
+    node *irma, *pai;
     irma = newNode();
     
     if(rrnPai != -1){
         PageRead( rrnPai , pai );
     }
     else{
+        pai = newNode();
         //Aumentar RRN
         (*ultimoRRN)++;
         int altura;
@@ -342,7 +342,7 @@ void insertBTree(int codEscola, int RRN){
     char status = 0;
     int noRaiz = 0, altura = 0, ultimoRRN = 0, RRNSobrinha = -1,  fatherRRN, ad_rrn;
     FILE* bfile;
-    node* no = newNode();
+    node* no;
     int rRRN,rIndex,ret = searchBTree(codEscola,&rRRN,&fatherRRN,&rIndex,&ad_rrn);
 
     if(ret == -1){ // O arquivo ainda nao foi criado, vamos cria-lo!
@@ -353,8 +353,10 @@ void insertBTree(int codEscola, int RRN){
         fwrite(&altura, sizeof(altura), 1, bfile);
         fwrite(&ultimoRRN, sizeof(ultimoRRN), 1, bfile);
 
+        no = newNode(); // cria o primeiro no
         insert(no,0,codEscola,RRN); // insere no nó
         PageWrite( 0 , no); // escreve o primeiro no
+        root->n_page = 0; // inicializando a raiz do buffer pool
         memcpy(&root->page,no,TamRegB);
     }
     else{//existindo o arquivo, preciso inserir o novo registro na posicao apropriada
@@ -375,6 +377,10 @@ void insertBTree(int codEscola, int RRN){
             //o escolhido para promocao, portanto ficaria 5 para o filho esquedo, 4 para o direito e um para o no pai
 
             doSplit(rIndex,RRN, codEscola, no,fatherRRN, rRRN,&ultimoRRN, RRNSobrinha);
+            node* Root = newNode();
+            PageRead(noRaiz, Root);
+            RootUpdate(noRaiz, Root);
+
             fseek(bfile,13,SEEK_SET);
             // precisa atualizar o no raiz e altura
             fwrite(&ultimoRRN,sizeof(ultimoRRN),1,bfile);
@@ -406,7 +412,7 @@ void insertBTree(int codEscola, int RRN){
 int searchBTree(int codEscola, int* RRN, int* fatherRRN , int* index, int* ad_RRN){
     //deve retornar o rrn na arvore
     int noRaiz = 0,altura = 0;
-    node* no = newNode();
+    node* no;
     FILE* bfile = fopen(filename,"rb+");
 
     if(bfile == NULL){ // se for nulo o arquivo n existe
@@ -462,6 +468,7 @@ int searchBTree(int codEscola, int* RRN, int* fatherRRN , int* index, int* ad_RR
         }
 
     }
+    
 }
 
 //___________________________________________________REMOCAO _______________________________________________________
@@ -484,7 +491,7 @@ int rootRRN(){
 void redefineRootRRN(int newRRN){
     FILE* file = fopen(filename, "rb+");
     fwrite(&newRRN, 4, 1, file);
-    fclose(file);
+    flcose(file);
 }
 
 //----------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -637,13 +644,12 @@ void removeKeyFromLeaf(int RRN, node* this, int fatherRRN, node* father, int ind
     //variaveis uteis para redistribuicao:
     int toTransfer;
 
-    leftBrother =  (node*) malloc(sizeof(node));
-    rightBrother = (node*) malloc(sizeof(node));
-
     //REMOVENDO ...........
+    //deixo todas as chaves que sobraram o mais a esquerda possivel 
+    //(isso ja apaga a chave com o codigo de escola que se quer remover):
     removeByShifting(this, index);
-
-
+    PageWrite(RRN, this);
+    removeByShifting(this, index);
     //verifico quantas chaves tem nesse node para saber se a remocao o desbalanceou:
     // uma folha deve ter no minimo (m/2)-1 e no maximo (m-1) cahves
     
@@ -716,12 +722,17 @@ void removeKeyFromLeaf(int RRN, node* this, int fatherRRN, node* father, int ind
                 //preciso redefinir 'this' para ele virar seu pai: (como nao quero remover nada do pai, o ultimo argumento e inutil)
                 searchBTree( (father->K[0]).C, &RRN, &fatherRRN, &lixo, &lixo);
 
-                //lembrando que as modificacoes de father e this já foram salvas no arquivo
-                
+                free(this);   // limpo este espaco de memoria, ppis os ponteiros serao redefinidos
+                free(father); // limpo este espaço de memoria
+                //lembrando que as modificacoes de father e this já foram sa
+
                 PageRead(RRN, this);           //agora 'this' passa a ser seu pai ...
                 PageRead(fatherRRN, father);   //... e father passa a ser o avo do que era 'this' (pai do pai)
             }
             //else --> pai ta certinho  
+
+            free(rightBrother);
+            free(leftBrother); 
         }
             
     }
@@ -729,8 +740,22 @@ void removeKeyFromLeaf(int RRN, node* this, int fatherRRN, node* father, int ind
 
     free(father);
     free(this);
-    free(rightBrother);
-    free(leftBrother); 
+
+}
+
+//----------------------------------------------------------------------------------------------------------------------------------------------------------
+void removeKeyFromNOTLeaf(node* this, int index){
+    char found = 0;
+
+    //achando a chave mais a esquerda do filho a esquerda (definicao meio ruim mais e isso...)
+
+    //tento ver se ele tem filho a direita
+    if(this->P[])
+    //senao vou pelo filho da esquerda
+
+    while(found == 0){
+        
+    }
 }
 
 //----------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -739,7 +764,7 @@ void removeKeyFromLeaf(int RRN, node* this, int fatherRRN, node* father, int ind
    1: node nao folha
    2: node folha
 */
-char leafOrNot(node* this){
+char rootLeafOrInBetween(node* this, node* father){
     int i;
     if(this == NULL) return -1;   //se 'this' e um ponteiro nulo, bom, ele n existe
 
@@ -750,96 +775,6 @@ char leafOrNot(node* this){
     return 2; //bom, restou ser folha ne....
 
 }
-
-//----------------------------------------------------------------------------------------------------------------------------------------------------------
-void removeKeyFromNOTLeaf(int originalRRN, node* this, int index){
-    node* original = this;
-    char found = 0;
-    int RRN, fatherRRN;
-    node* father;
-    tKey aux;
-
-
-    //achando a chave mais a esquerda do filho mais a esquerda do node a direita de this ______________
-    if(this->P[index+1] != -1) {
-
-        //vou para o filho a direita de this:
-        father = this;
-        PageRead(this->P[index+1], this);
-        
-        RRN = father->P[index+1];
-        fatherRRN = originalRRN;
-
-        //se este novo 'this' ja for uma folha, paro por aqui 
-        if(leafOrNot(this) == 2 ) {
-            found = 1;
-            index = index+1;
-        }
-        //se nao, desco para esquerda ate chegar no nó folha:
-        else {
-            while(found == 0){
-                father = this; 
-                PageRead(this->P[0], this);
-
-                fatherRRN = RRN; 
-                RRN = father->P[0];
-
-                //se cheguei em um node folha, cheguei onde eu queria:
-                if(leafOrNot(this) == 2) found = 1;
-            }
-            // index agora servira para chamar a funcao de remocao em folha e precisa indicar onde de 'this' esta a chave trocada, no caso, 0
-            index =  0;
-        }
-        //quando achar, troco as chaves:
-        aux = this->K[0];
-        this->K[0] = original->K[index];
-        original->K[index] = aux;
-    }
-    
-    //achando a chave mais a direita do filho mais a direita do node a esquerda de this: ______________
-    else if(this->P[index] != -1){
-        //vou para o filho a esquerda de this:
-        father = this;
-        PageRead(this->P[index], this);
-
-        RRN = father->P[index];
-        fatherRRN = originalRRN;
-
-        //se este novo 'this' ja for uma folha, paro por aqui 
-        if(leafOrNot(this) == 2) {
-            found = 1;
-            //index = index
-        }
-         //se nao, desco para direita ate chegar no nó folha
-        else{
-            while(found == 0){
-                father = this; 
-                PageRead(this->P[this->n-1], this);
-
-                fatherRRN = RRN; 
-                RRN = father->P[this->n-1];
-                
-                //se cheguei em um node folha, cheguei onde eu queria:
-                if(leafOrNot(this) == 2) found = 1;
-            }
-            //index agora servira para chamar a funcao de remocao em follha e precisa indicar onde de 'this' esta a chave trocada, no caso, this->n -1
-            index =  this->n-1;
-        }
-        //quando achar, troco as chaves:
-        aux = this->K[this->n-1];
-        this->K[this->n-1] = original->K[index];
-        original->K[index] = aux;
-
-    }
-
-    //salvo as modificacoes no arquivo:
-    PageWrite(originalRRN, original);
-    PageWrite(RRN, this);
-
-    //agora que a troca foi efetua, removo a chave desejada a partir da folha em que agora ela esta inserida;
-    removeKeyFromLeaf(RRN, this, fatherRRN, father, index);
-}
-
 
 //----------------------------------------------------------------------------------------------------------------------------------------------------------
  /* RETORNOS
@@ -856,25 +791,21 @@ int removeBTree(int codEscola){
     int lixo;
 
     //buscar código da escola desejado e se o codigo da escola nao existir na arvore, este registro nao pode ser removido
-    if (searchBTree(codEscola, &RRN, &fatherRRN, &index, &lixo) != 1) return -1;
-
-    pageWithKey = (node*) malloc(sizeof(node));
-    father = (node*) malloc(sizeof(node));
+     if (searchBTree(codEscola, &RRN, &fatherRRN, &index, &lixo) != 1) return -1;
 
     //leio as informaçoes deste RRN em 'pageWithKey'... autoexplicativo nao e mesmo !?  Depois faco isso com o pai;D
-    if (RRN != -1)  PageRead( RRN, pageWithKey);
+    if (RRN != -1)  PageRead(pageWithKey,  RRN);
     else  pageWithKey = NULL;
-    if (fatherRRN != -1) PageRead(fatherRRN, father);
+    if (fatherRRN != -1) PageRead(father, fatherRRN);
     else father = NULL;
 
     //agora verifico se estou lidando com uma folha, raiz, ou !essas_coisas:
-    type = leafOrNot(pageWithKey);
+    type = rootLeafOrInBetween(pageWithKey, father);
 
     switch((int)type){
-        case 1: removeKeyFromNOTLeaf(RRN, pageWithKey, index);   break;
+        case 1: removeKeyFromNOTLeaf(pageWithKey, index);   break;
         case 2: removeKeyFromLeaf(RRN, pageWithKey, fatherRRN, father, index);   break;
         default: break;
     }
-    
-    return 0;
+
 }
