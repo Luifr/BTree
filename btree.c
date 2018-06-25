@@ -5,110 +5,142 @@
 #include "btree.h"
 
 char filename[] = "btree.dat";
-int bfill = 0;
 
-//Saída e comentar
+//Variáveis para controle de buffer
+struct BUFFER {
+    node page;
+    int n_page;
+} *buffer, *root; /*Buffer*/
+int bfill = 0 /*Preenchimento atual do buffer*/, bleast /*Último nó a ser utilizado*/, pagefault = 0, pagehit = 0; /*Controle de faults e hits*/
+
+//Inicia o buffer
 void BufferInit() {
 	buffer = malloc(sizeof(struct BUFFER) * 4);
 	root = malloc(sizeof(struct BUFFER));
-    root->n_page = 0;
 }
 
-//Essa função grava source no arquivo arq
+//Essa função grava source no arquivo da btree
 void bsave(struct BUFFER* source) {
 	int i;
-    FILE* arq = fopen(filename, "rb+");
+	FILE* arq = fopen(filename, "rb+");
 
 	fseek(arq, TamRegB * source->n_page + TamCabB, SEEK_SET);
-	fwrite(&source->page.n, sizeof(int), 1, arq);
 
-	for (i = 0; i < nReg; ++i) {
+	fwrite(&source->page.n, sizeof(int), 1, arq); //Grava n
+	for (i = 0; i < nReg; ++i) { //Grava pares de ponteiros e chaves
 		fwrite(source->page.P + i, sizeof(int), 1, arq);
 		fwrite(source->page.K + i, sizeof(int), 1, arq);
 	}
+	fwrite(&source->page.P + 9, sizeof(int), 1, arq); //Grava o último ponteiro
 
-	fwrite(&source->page.P + 9, sizeof(int), 1, arq);
-    fclose(arq);
+	fclose(arq);
 }
 
-//Essa função lê a página page do arquivo arq e salva no buffer destination
+//Essa função lê a página page do arquivo da btree e salva no buffer destination
 void bget(struct BUFFER* destination, int page) {
 	int i;
-    FILE* arq = fopen(filename, "rb+");
+	FILE* arq = fopen(filename, "rb+");
 	destination->n_page = page;
 
 	fseek(arq, TamRegB * page + TamCabB , SEEK_SET);
-	fread(&destination->page.n, sizeof(int), 1, arq);
 
-	for (i = 0; i < nReg; ++i) {
+	fread(&destination->page.n, sizeof(int), 1, arq); //Lê n
+	for (i = 0; i < nReg; ++i) { //Lê pares de ponteiros e chaves
 		fread(destination->page.P + i, sizeof(int), 1, arq);
 		fread(destination->page.K + i, sizeof(int), 1, arq);
 	}
+	fread(&destination->page.P + 9, sizeof(int), 1, arq); //Lê o último ponteiro
 
-	fread(&destination->page.P + 9, sizeof(int), 1, arq);
-    fclose(arq);
+	fclose(arq);
 }
 
+//Atualiza qual é a raiz da árvore para o espaço reservado para esta no buffer
 void RootUpdate(int page, node* no) {
-    root->n_page = page;
-    memcpy(&root->page, no, TamRegB);
-    bsave(root);    
+			bsave(root); //Salva a antiga raiz
+			root->n_page = page;
+			memcpy(&root->page, no, TamRegB);
 }
 
+//Returna o conteúdo do nó número page
 void PageRead(int page, node* destination) {
 	int i;
 
+	//Verifica se a busca é pela raiz
 	if (page == root->n_page) {
 		memcpy(destination, &root->page, sizeof(node));
+		++pagehit;
 		return;
 	}
 
+	//Busca no buffer
 	for (i = 0; i < bfill; ++i)
 		if (page == buffer[i].n_page) {
 			memcpy(destination, &buffer[i].page, sizeof(node));
 			bleast = i;
+			++pagehit;
 			return;
 		}
 
-	if (bfill < bufferTAM) {
+	++pagefault;
+	if (bfill < bufferTAM) { //Adiciona outro nó se o buffer não estiver cheio
 		bget(buffer + bfill, page);
 		memcpy(destination, &buffer[bfill].page, sizeof(node));
 		bleast = bfill++;
-        return;
+		return;
 	}
 
+	//É necessário fazer uma substituição
 	bsave(buffer + bleast);
 	bget(buffer + bleast, page);
 	memcpy(destination, &buffer[bleast].page, sizeof(node));
 }
 
+//Atualiza o conteudo do nó número page
 void PageWrite(int page, node* source) {
 	int i;
 
+	//Verifica se a busca é pela raiz
 	if (page == root->n_page) {
 		memcpy(&root->page, source, sizeof(node));
+		++pagehit;
 		return;
 	}
 
+	//Busca no buffer
 	for (i = 0; i < bfill; ++i)
 		if (page == buffer[i].n_page) {
 			memcpy(&buffer[i].page, source, sizeof(node));
 			bleast = i;
+			++pagehit;
 			return;
 		}
 
-	if (bfill < bufferTAM) {
+	++pagefault;
+	if (bfill < bufferTAM) { //Adiciona outro nó se o buffer não estiver cheio
 		memcpy(source, &buffer[bfill].page, sizeof(node));
 		bleast = bfill++;
         return;
 	}
 
+	//É necessário fazer uma substituição
 	bsave(buffer + bleast);
 	buffer[bleast].n_page = page;
 	memcpy(&buffer[bleast].page, source, sizeof(node));
 }
 
+//Escreve no arquvo de controle do buffer e esvazia o buffer
 void BufferEnd() {
+	//Atualiza o arquivo de controle do buffer
+	FILE* arq = fopen("buffer-info.text", "a");
+	fwrite("Page fault: ", sizeof(char), 12, arq);
+	fwrite(&pagefault, sizeof(int), 1, arq);
+	fwrite("; Page hit: ", sizeof(char), 12, arq);
+	fwrite(&pagehit, sizeof(int), 1, arq);
+	fwrite(".\n", sizeof(char), 2, arq);
+	fclose(arq);
+
+	//Esvazia o buffer
+	bsave(root);
 	while (bfill--)
 		bsave(buffer + bfill);
 
@@ -167,8 +199,8 @@ void doSplit(int index, int RRN, int codEscola, node* no, int rrnPai, int rRRN, 
         int codEscolaRec = no->K[4].C;
         int rrnRec = no->K[4].PRRN;
 
-        for(int i=0; i<4; i++){                          
-            irma->K[i] = no->K[5+i]; //copiando ultimas 4 chaves
+        for(int i=0; i<4; i++){
+			irma->K[i] = no->K[5+i]; //copiando ultimas 4 chaves
             irma->P[i] = no->P[5+i];
        }
 

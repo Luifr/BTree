@@ -19,13 +19,6 @@ typedef struct{
     tKey K[nReg];
 }node;
 
-struct BUFFER {
-    node page;
-    int n_page;
-} *buffer, *root;
-
-int bleast;
-
 void BufferInit();
 void BufferEnd();
 
